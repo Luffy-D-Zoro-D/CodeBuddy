@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { mongoRequest } from "./mongo.server";
-import { createSessionToken, verifyPassword, verifyToken, changePassword } from "./auth.server";
+import { createSessionToken, verifyCredentials, verifyToken, changePassword } from "./auth.server";
 import { formatCodeWithGroq } from "./groq.server";
 
 // Authenticated proxy for Atlas Data API calls
@@ -29,10 +29,7 @@ export const runMongoOp = createServerFn({ method: "POST" })
 export const loginFn = createServerFn({ method: "POST" })
   .validator((d: { username: string; password: string }) => d)
   .handler(async ({ data: { username, password } }) => {
-    if (username !== "admin") {
-      throw new Error("Invalid credentials");
-    }
-    const isValid = await verifyPassword(password);
+    const isValid = await verifyCredentials(username, password);
     if (!isValid) {
       throw new Error("Invalid credentials");
     }

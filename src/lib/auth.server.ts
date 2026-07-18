@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, decodeJwt } from "jose";
 import { mongoRequest } from "./mongo.server";
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "fallback_super_secret_dev_key");
@@ -23,24 +23,23 @@ export async function verifyToken(token: string | undefined): Promise<boolean> {
   }
 }
 
-// Ensure the admin collection is properly seeded if it doesn't exist
+// Ensure the users collection is properly seeded if it doesn't exist
 // This is called during login attempt
-export async function verifyPassword(password: string): Promise<boolean> {
-  // Try to find the admin user
+export async function verifyCredentials(username: string, password: string): Promise<boolean> {
+  // Try to find the user
   let res;
   try {
-    res = await mongoRequest("users", "findOne", { filter: { username: "admin" } });
+    res = await mongoRequest("users", "findOne", { filter: { username } });
   } catch {
     return false;
   }
 
-  // Very basic setup: if no user exists, we allow 'admin' to work initially,
-  // and we'll insert them so they can change the password later.
-  // In a real app, you'd use bcrypt to compare hashes. For simplicity without native node deps:
+  // Very basic setup: if no user exists AT ALL in the DB, we bootstrap the first user
   if (!res.document) {
-    if (password === "admin") {
+    const allUsers = await mongoRequest("users", "find", { filter: {} });
+    if (!allUsers.documents || allUsers.documents.length === 0) {
       await mongoRequest("users", "insertOne", {
-        document: { username: "admin", password: "admin" },
+        document: { username, password },
       });
       return true;
     }
@@ -55,10 +54,13 @@ export async function changePassword(
   newPassword: string,
 ): Promise<boolean> {
   const isAuthed = await verifyToken(token);
-  if (!isAuthed) return false;
+  if (!isAuthed || !token) return false;
+
+  const payload = decodeJwt(token);
+  const username = payload.username as string;
 
   await mongoRequest("users", "updateOne", {
-    filter: { username: "admin" },
+    filter: { username },
     update: { $set: { password: newPassword } },
   });
 

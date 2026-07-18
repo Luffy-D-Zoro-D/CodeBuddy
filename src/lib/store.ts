@@ -47,7 +47,7 @@ type SessionState = {
   token: string | null;
 };
 
-export type Settings = Record<string, never>;
+export type Settings = Record<string, any>;
 
 const SESSION_KEY = "codebuddy_session_v1";
 const SETTINGS_KEY = "codebuddy_settings_v1";
