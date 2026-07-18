@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from "@/lib/store";
+import { api, useStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({
@@ -16,17 +16,20 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const storeVer = useStore();
   const navigate = useNavigate();
+  const [isChecking, setIsChecking] = useState(true);
 
   const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     if (!api.isAuthed()) {
-      navigate({ to: "/oden/login" });
-      return;
+      navigate({ to: "/" });
+    } else {
+      setIsChecking(false);
+      const s = api.getSettings();
     }
-    const s = api.getSettings();
-  }, [navigate]);
+  }, [navigate, storeVer]);
 
   const updatePassword = async () => {
     if (!newPassword || newPassword.length < 4) {
@@ -41,6 +44,8 @@ function SettingsPage() {
       toast.error(err instanceof Error ? err.message : "Failed to update password");
     }
   };
+
+  if (isChecking) return null;
 
   return (
     <div className="min-h-screen bg-background">

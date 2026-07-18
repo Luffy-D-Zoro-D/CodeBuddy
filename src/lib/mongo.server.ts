@@ -25,8 +25,8 @@ export async function mongoRequest(
 ) {
   const client = await getMongoClient();
 
-  // Extract database name from URI, or default to codebuddy if not provided in URI
-  const db = client.db();
+  // Explicitly use the codebuddy database to avoid colliding with default 'test' DB
+  const db = client.db("codebuddy");
   const collection = db.collection(collectionName);
 
   switch (action) {
@@ -57,4 +57,11 @@ export async function mongoRequest(
     default:
       throw new Error(`Unsupported action: ${action}`);
   }
+}
+
+// Eagerly connect on startup to log the connection status
+if (typeof window === "undefined") {
+  getMongoClient()
+    .then(() => console.log("✅ Successfully connected to MongoDB Atlas (codebuddy)"))
+    .catch((err) => console.error("❌ Failed to connect to MongoDB:", err.message));
 }

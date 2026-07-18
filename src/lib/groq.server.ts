@@ -1,5 +1,5 @@
 export async function formatCodeWithGroq(code: string, language: string, aiNote?: string) {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("Missing GROQ_API_KEY in .env");
   }

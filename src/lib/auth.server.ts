@@ -30,13 +30,20 @@ export async function verifyCredentials(username: string, password: string): Pro
   let res;
   try {
     res = await mongoRequest("users", "findOne", { filter: { username } });
-  } catch {
+  } catch (err) {
+    console.error("MongoDB Error in verifyCredentials (findOne):", err);
     return false;
   }
 
   // Very basic setup: if no user exists AT ALL in the DB, we bootstrap the first user
   if (!res.document) {
-    const allUsers = await mongoRequest("users", "find", { filter: {} });
+    let allUsers;
+    try {
+      allUsers = await mongoRequest("users", "find", { filter: {} });
+    } catch (err) {
+      console.error("MongoDB Error in verifyCredentials (find all):", err);
+      return false;
+    }
     if (!allUsers.documents || allUsers.documents.length === 0) {
       await mongoRequest("users", "insertOne", {
         document: { username, password },

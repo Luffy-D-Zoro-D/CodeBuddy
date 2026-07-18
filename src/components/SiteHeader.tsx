@@ -6,16 +6,20 @@ import {
   Settings as SettingsIcon,
   FolderTree,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { api, useStore } from "@/lib/store";
 
 export function SiteHeader() {
-  useStore();
+  const storeVer = useStore();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
-  const authed = api.isAuthed();
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    setAuthed(api.isAuthed());
+  }, [storeVer]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">
@@ -31,6 +35,7 @@ export function SiteHeader() {
             e.preventDefault();
             if (q.trim()) navigate({ to: "/search", search: { q } });
           }}
+          suppressHydrationWarning
         >
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -38,6 +43,7 @@ export function SiteHeader() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search lectures…"
             className="pl-9 h-9 bg-secondary/60 border-transparent focus-visible:border-border"
+            suppressHydrationWarning
           />
         </form>
 

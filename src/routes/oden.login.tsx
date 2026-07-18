@@ -40,7 +40,7 @@ function LoginPage() {
           Teacher login
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">Sign in to manage lectures and files.</p>
-        <form onSubmit={submit} className="mt-6 space-y-4">
+        <form onSubmit={submit} className="mt-6 space-y-4" suppressHydrationWarning>
           <div className="space-y-1.5">
             <Label htmlFor="u">Username</Label>
             <Input
@@ -48,6 +48,7 @@ function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoFocus
+              suppressHydrationWarning
             />
           </div>
           <div className="space-y-1.5">
@@ -57,9 +58,10 @@ function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              suppressHydrationWarning
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading} suppressHydrationWarning>
             {loading ? "Signing in…" : "Sign in"}
           </Button>
           <p className="text-xs text-muted-foreground">

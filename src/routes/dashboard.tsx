@@ -45,11 +45,17 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function Dashboard() {
-  useStore();
+  const storeVer = useStore();
   const navigate = useNavigate();
+  const [isChecking, setIsChecking] = useState(true);
+
   useEffect(() => {
-    if (!api.isAuthed()) navigate({ to: "/oden/login" });
-  }, [navigate]);
+    if (!api.isAuthed()) {
+      navigate({ to: "/" });
+    } else {
+      setIsChecking(false);
+    }
+  }, [navigate, storeVer]);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -136,6 +142,8 @@ function Dashboard() {
       toast.error((e as Error).message);
     }
   };
+
+  if (isChecking) return null;
 
   return (
     <div className="min-h-screen bg-background">

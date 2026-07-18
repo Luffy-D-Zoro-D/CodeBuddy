@@ -1,5 +1,5 @@
 import "./lib/error-capture";
-
+import "./lib/mongo.server";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
