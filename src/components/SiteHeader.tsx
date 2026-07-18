@@ -1,5 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, LayoutDashboard, LogOut, Settings as SettingsIcon, FolderTree } from "lucide-react";
+import {
+  Search,
+  LayoutDashboard,
+  LogOut,
+  Settings as SettingsIcon,
+  FolderTree,
+} from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,9 +21,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
         <Link to="/" className="flex items-baseline gap-2">
-          <span className="text-xl font-semibold tracking-tight text-foreground">
-            CodeClass
-          </span>
+          <span className="text-xl font-semibold tracking-tight text-foreground">CodeBuddy</span>
           <span className="text-xs font-medium text-muted-foreground">WebTech</span>
         </Link>
 

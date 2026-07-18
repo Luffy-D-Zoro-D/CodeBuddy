@@ -5,10 +5,25 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { api, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/browse/$category/")({
+  loader: async ({ params: { category } }) => {
+    const cat = await api.getCategoryBySlug(category);
+    if (!cat) throw notFound();
+    const topics = await api.listTopics(cat.id);
+
+    const daysPerTopicList = await Promise.all(
+      topics.map(async (t) => {
+        const days = await api.listDays(t.id);
+        return { topicId: t.id, days };
+      }),
+    );
+    const daysByTopic = new Map(daysPerTopicList.map((d) => [d.topicId, d.days]));
+
+    return { cat, topics, daysByTopic };
+  },
   component: CategoryPage,
   head: ({ params }) => ({
     meta: [
-      { title: `${params.category.toUpperCase()} — CodeClass` },
+      { title: `${params.category.toUpperCase()} — CodeBuddy` },
       {
         name: "description",
         content: `${params.category.toUpperCase()} topics organized day-by-day.`,
@@ -18,12 +33,8 @@ export const Route = createFileRoute("/browse/$category/")({
 });
 
 function CategoryPage() {
-  useStore();
-  const { category: slug } = Route.useParams();
-  const cat = api.getCategoryBySlug(slug);
-  if (!cat) throw notFound();
-
-  const topics = api.listTopics(cat.id);
+  useStore(); // keep for real-time reactivity for localStorage
+  const { cat, topics, daysByTopic } = Route.useLoaderData();
 
   // Expand the topic pointed to by the URL hash on mount.
   const [openId, setOpenId] = useState<string | null>(topics[0]?.id ?? null);
@@ -41,14 +52,14 @@ function CategoryPage() {
       <SiteHeader />
       <main className="mx-auto max-w-4xl px-6 py-12">
         <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-foreground">Home</Link>
+          <Link to="/" className="hover:text-foreground">
+            Home
+          </Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="text-foreground">{cat.name}</span>
         </nav>
 
-        <h1 className="text-4xl font-semibold tracking-tight text-foreground">
-          {cat.name}
-        </h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground">{cat.name}</h1>
         <p className="mt-2 text-muted-foreground">
           {topics.length} {topics.length === 1 ? "topic" : "topics"} · newest on top
         </p>
@@ -60,7 +71,7 @@ function CategoryPage() {
         ) : (
           <ul className="mt-8 space-y-3">
             {topics.map((t) => {
-              const days = api.listDays(t.id);
+              const days = daysByTopic.get(t.id) || [];
               const isOpen = openId === t.id;
               return (
                 <li

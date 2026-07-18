@@ -9,10 +9,20 @@ import { toast } from "sonner";
 import { api, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/browse/$category/$topic/$day")({
+  loader: async ({ params: { category, topic: topicSlug, day: dayStr } }) => {
+    const cat = await api.getCategoryBySlug(category);
+    const topic = await api.getTopic(category, topicSlug);
+    const dayNumber = Number(dayStr);
+    const day = topic ? await api.getDay(topic.id, dayNumber) : undefined;
+    const files = day ? await api.listFiles(day.id) : [];
+
+    if (!cat || !topic || !day) throw notFound();
+    return { cat, topic, day, files };
+  },
   component: DayPage,
   head: ({ params }) => ({
     meta: [
-      { title: `${params.topic} · Day ${params.day} — CodeClass` },
+      { title: `${params.topic} · Day ${params.day} — CodeBuddy` },
       { name: "description", content: `Day ${params.day} of ${params.topic}.` },
     ],
   }),
@@ -20,23 +30,15 @@ export const Route = createFileRoute("/browse/$category/$topic/$day")({
 
 function DayPage() {
   useStore();
-  const { category, topic: topicSlug, day: dayStr } = Route.useParams();
-  const cat = api.getCategoryBySlug(category);
-  const topic = api.getTopic(category, topicSlug);
-  const dayNumber = Number(dayStr);
-  const day = topic ? api.getDay(topic.id, dayNumber) : undefined;
+  const { cat, topic, day, files } = Route.useLoaderData();
 
   const [copied, setCopied] = useState(false);
   const [activeFile, setActiveFile] = useState<string | undefined>(undefined);
-
-  const files = day ? api.listFiles(day.id) : [];
 
   useEffect(() => {
     if (files[0]) setActiveFile((prev) => prev ?? files[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day?.id]);
-
-  if (!cat || !topic || !day) throw notFound();
 
   const current = files.find((f) => f.id === activeFile) ?? files[0];
 
@@ -58,9 +60,15 @@ function DayPage() {
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-6 py-10">
         <nav className="mb-4 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-foreground">Home</Link>
+          <Link to="/" className="hover:text-foreground">
+            Home
+          </Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/browse/$category" params={{ category: cat.slug }} className="hover:text-foreground">
+          <Link
+            to="/browse/$category"
+            params={{ category: cat.slug }}
+            className="hover:text-foreground"
+          >
             {cat.name}
           </Link>
           <ChevronRight className="h-3.5 w-3.5" />
@@ -121,9 +129,13 @@ function DayPage() {
               {current && (
                 <Button size="sm" onClick={copy}>
                   {copied ? (
-                    <><Check className="mr-1.5 h-4 w-4" /> Copied</>
+                    <>
+                      <Check className="mr-1.5 h-4 w-4" /> Copied
+                    </>
                   ) : (
-                    <><Copy className="mr-1.5 h-4 w-4" /> Copy {current.language.toUpperCase()}</>
+                    <>
+                      <Copy className="mr-1.5 h-4 w-4" /> Copy {current.language.toUpperCase()}
+                    </>
                   )}
                 </Button>
               )}

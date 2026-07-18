@@ -4,16 +4,37 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { api, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    const categories = await api.listCategories();
+    const topics = await api.listTopics();
+
+    // Fetch days for all topics in parallel to calculate counts
+    const daysPerTopicList = await Promise.all(
+      topics.map(async (t) => {
+        const days = await api.listDays(t.id);
+        return { topicId: t.id, count: days.length };
+      }),
+    );
+    const daysPerTopic = new Map(daysPerTopicList.map((d) => [d.topicId, d.count]));
+    const totalDays = daysPerTopicList.reduce((sum, d) => sum + d.count, 0);
+
+    // Calculate topics per category
+    const topicsPerCategory = new Map(
+      categories.map((c) => [c.id, topics.filter((t) => t.categoryId === c.id).length]),
+    );
+
+    return { categories, topics, daysPerTopic, totalDays, topicsPerCategory };
+  },
   component: Index,
   head: () => ({
     meta: [
-      { title: "CodeClass — Classroom code, beautifully organized" },
+      { title: "CodeBuddy — Classroom code, beautifully organized" },
       {
         name: "description",
         content:
           "Browse day-by-day lecture notes and code for HTML, CSS, and JavaScript, organized by topic.",
       },
-      { property: "og:title", content: "CodeClass" },
+      { property: "og:title", content: "CodeBuddy" },
       { property: "og:description", content: "Classroom code, organized by topic and day." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -22,15 +43,11 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  useStore();
-  const categories = api.listCategories();
-  const topics = api.listTopics();
+  useStore(); // Keep for real-time reactivity if localStorage is updated
+  const { categories, topics, daysPerTopic, totalDays, topicsPerCategory } = Route.useLoaderData();
+
   const recentTopics = topics.slice(0, 6);
   const catById = new Map(categories.map((c) => [c.id, c]));
-  const totalDays = categories.reduce(
-    (sum, c) => sum + api.listTopics(c.id).reduce((s, t) => s + api.listDays(t.id).length, 0),
-    0,
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,13 +84,16 @@ function Index() {
 
         <section aria-labelledby="cats" className="pb-16">
           <div className="mb-6 flex items-baseline justify-between">
-            <h2 id="cats" className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <h2
+              id="cats"
+              className="text-sm font-semibold uppercase tracking-wider text-muted-foreground"
+            >
               Subjects
             </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((c) => {
-              const tCount = api.listTopics(c.id).length;
+              const tCount = topicsPerCategory.get(c.id) || 0;
               return (
                 <Link
                   key={c.id}
@@ -101,7 +121,10 @@ function Index() {
 
         <section id="recent" aria-labelledby="recent-h" className="pb-24">
           <div className="mb-6 flex items-baseline justify-between">
-            <h2 id="recent-h" className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <h2
+              id="recent-h"
+              className="text-sm font-semibold uppercase tracking-wider text-muted-foreground"
+            >
               Recent topics
             </h2>
           </div>
@@ -113,7 +136,7 @@ function Index() {
             <ul className="divide-y divide-border rounded-xl border border-border bg-card">
               {recentTopics.map((t) => {
                 const cat = catById.get(t.categoryId);
-                const days = api.listDays(t.id).length;
+                const days = daysPerTopic.get(t.id) || 0;
                 return (
                   <li key={t.id}>
                     <Link
@@ -142,7 +165,7 @@ function Index() {
       </main>
       <footer className="border-t border-border">
         <div className="mx-auto max-w-6xl px-6 py-8 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} CodeClass — Web Technology
+          © {new Date().getFullYear()} CodeBuddy — Web Technology
         </div>
       </footer>
     </div>

@@ -1,22 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronDown, ChevronRight, FileCode2, FolderClosed, FolderOpen } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  FileCode2,
+  FolderClosed,
+  FolderOpen,
+  Loader2,
+} from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { api, useStore } from "@/lib/store";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/explorer")({
+  loader: async () => {
+    return { categories: await api.listCategories() };
+  },
   component: ExplorerPage,
   head: () => ({
     meta: [
-      { title: "Explorer — CodeClass" },
+      { title: "Explorer — CodeBuddy" },
       { name: "description", content: "Tree explorer of all subjects, topics, days and files." },
     ],
   }),
 });
 
 function ExplorerPage() {
-  useStore();
-  const categories = api.listCategories();
+  useStore(); // For local storage reactivity if needed
+  const { categories } = Route.useLoaderData();
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,7 +58,11 @@ function CategoryColumn({
   categorySlug: string;
   name: string;
 }) {
-  const topics = api.listTopics(categoryId);
+  const { data: topics = [], isLoading } = useQuery({
+    queryKey: ["topics", categoryId],
+    queryFn: () => api.listTopics(categoryId),
+  });
+
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-baseline justify-between">
@@ -56,14 +71,24 @@ function CategoryColumn({
           {topics.length} {topics.length === 1 ? "topic" : "topics"}
         </span>
       </div>
-      {topics.length === 0 ? (
+      {isLoading ? (
+        <div className="py-4 text-center">
+          <Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : topics.length === 0 ? (
         <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
           No topics yet
         </p>
       ) : (
         <ul className="space-y-1">
           {topics.map((t) => (
-            <TopicNode key={t.id} topicId={t.id} title={t.title} topicSlug={t.slug} categorySlug={categorySlug} />
+            <TopicNode
+              key={t.id}
+              topicId={t.id}
+              title={t.title}
+              topicSlug={t.slug}
+              categorySlug={categorySlug}
+            />
           ))}
         </ul>
       )}
@@ -83,7 +108,12 @@ function TopicNode({
   categorySlug: string;
 }) {
   const [open, setOpen] = useState(false);
-  const days = api.listDays(topicId);
+  const { data: days = [], isLoading } = useQuery({
+    queryKey: ["days", topicId],
+    queryFn: () => api.listDays(topicId),
+    enabled: open, // Only fetch when expanded
+  });
+
   return (
     <li>
       <button
@@ -97,11 +127,15 @@ function TopicNode({
           <FolderClosed className="h-4 w-4 text-muted-foreground" />
         )}
         <span className="truncate">{title}</span>
-        <span className="ml-auto text-xs text-muted-foreground">{days.length}</span>
       </button>
       {open && (
         <ul className="mt-1 space-y-0.5 border-l border-border pl-3 ml-2">
-          {days.length === 0 && (
+          {isLoading && (
+            <li className="px-2 py-1 text-xs">
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            </li>
+          )}
+          {!isLoading && days.length === 0 && (
             <li className="px-2 py-1 text-xs text-muted-foreground">No days yet</li>
           )}
           {days.map((d) => (
@@ -134,7 +168,12 @@ function DayNode({
   topicSlug: string;
 }) {
   const [open, setOpen] = useState(false);
-  const files = api.listFiles(dayId);
+  const { data: files = [], isLoading } = useQuery({
+    queryKey: ["files", dayId],
+    queryFn: () => api.listFiles(dayId),
+    enabled: open,
+  });
+
   return (
     <li>
       <div className="flex items-center gap-1">
@@ -142,7 +181,11 @@ function DayNode({
           onClick={() => setOpen((o) => !o)}
           className="flex flex-1 items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm hover:bg-secondary"
         >
-          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          {open ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
           {open ? (
             <FolderOpen className="h-3.5 w-3.5 text-primary" />
           ) : (
@@ -163,7 +206,12 @@ function DayNode({
       </div>
       {open && (
         <ul className="mt-0.5 space-y-0.5 border-l border-border pl-3 ml-1.5">
-          {files.length === 0 && (
+          {isLoading && (
+            <li className="px-2 py-1">
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            </li>
+          )}
+          {!isLoading && files.length === 0 && (
             <li className="px-2 py-1 text-xs text-muted-foreground">No files</li>
           )}
           {files.map((f) => (

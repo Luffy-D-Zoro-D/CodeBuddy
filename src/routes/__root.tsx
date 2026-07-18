@@ -78,14 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CodeClass — Classroom code, beautifully organized" },
+      { title: "CodeBuddy — Classroom code, beautifully organized" },
       {
         name: "description",
         content:
-          "CodeClass is a lightweight classroom repository for Web Technology instructors to share HTML, CSS, and JavaScript lectures with students.",
+          "CodeBuddy is a lightweight classroom repository for Web Technology instructors to share HTML, CSS, and JavaScript lectures with students.",
       },
-      { name: "author", content: "CodeClass" },
-      { property: "og:title", content: "CodeClass — Classroom code, beautifully organized" },
+      { name: "author", content: "CodeBuddy" },
+      { property: "og:title", content: "CodeBuddy — Classroom code, beautifully organized" },
       {
         property: "og:description",
         content:

@@ -9,13 +9,7 @@ type Props = {
   height?: number | string;
 };
 
-export function CodeViewer({
-  value,
-  language,
-  readOnly = true,
-  onChange,
-  height = 520,
-}: Props) {
+export function CodeViewer({ value, language, readOnly = true, onChange, height = 520 }: Props) {
   // Avoid SSR mismatch: Monaco is client-only.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -44,8 +38,7 @@ export function CodeViewer({
           minimap: { enabled: false },
           fontSize: 14,
           lineHeight: 22,
-          fontFamily:
-            'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
           scrollBeyondLastLine: false,
           smoothScrolling: true,
           renderLineHighlight: readOnly ? "none" : "line",

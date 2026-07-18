@@ -1,4 +1,4 @@
-# CodeClass — UI Structures
+# CodeBuddy — UI Structures
 
 Two student browsing structures currently coexist. Keep BOTH until the user
 decides which to remove. If the user asks to "go back to previous structure",

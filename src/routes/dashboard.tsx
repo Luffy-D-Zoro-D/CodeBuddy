@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Save, Sparkles, Trash2, FileCode2, CalendarDays } from "lucide-react";
+import { Plus, Save, Sparkles, Trash2, FileCode2, CalendarDays, Loader2 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CodeViewer } from "@/components/CodeViewer";
 import { Button } from "@/components/ui/button";
@@ -8,22 +8,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { api, useStore, type CodeFile, type Topic, type Day } from "@/lib/store";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
-  head: () => ({ meta: [{ title: "Dashboard — CodeClass" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Dashboard — CodeBuddy" }, { name: "robots", content: "noindex" }],
+  }),
 });
 
 function Dashboard() {
@@ -33,13 +51,26 @@ function Dashboard() {
     if (!api.isAuthed()) navigate({ to: "/oden/login" });
   }, [navigate]);
 
-  const categories = api.listCategories();
-  const [selectedCat, setSelectedCat] = useState<string>(categories[0]?.id ?? "");
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.listCategories(),
+  });
+
+  const [selectedCat, setSelectedCat] = useState<string>("");
   useEffect(() => {
     if (!selectedCat && categories[0]) setSelectedCat(categories[0].id);
   }, [categories, selectedCat]);
 
-  const topics = selectedCat ? api.listTopics(selectedCat) : [];
+  const {
+    data: topics = [],
+    refetch: refetchTopics,
+    isLoading: isLoadingTopics,
+  } = useQuery({
+    queryKey: ["topics", selectedCat],
+    queryFn: () => api.listTopics(selectedCat),
+    enabled: !!selectedCat,
+  });
+
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   useEffect(() => {
     if (!topics.find((t) => t.id === selectedTopicId)) {
@@ -48,7 +79,16 @@ function Dashboard() {
   }, [topics, selectedTopicId]);
   const selectedTopic = topics.find((t) => t.id === selectedTopicId) ?? null;
 
-  const days = selectedTopic ? api.listDays(selectedTopic.id) : [];
+  const {
+    data: days = [],
+    refetch: refetchDays,
+    isLoading: isLoadingDays,
+  } = useQuery({
+    queryKey: ["days", selectedTopicId],
+    queryFn: () => api.listDays(selectedTopicId!),
+    enabled: !!selectedTopicId,
+  });
+
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   useEffect(() => {
     if (!days.find((d) => d.id === selectedDayId)) {
@@ -57,7 +97,16 @@ function Dashboard() {
   }, [days, selectedDayId]);
   const selectedDay = days.find((d) => d.id === selectedDayId) ?? null;
 
-  const files = selectedDay ? api.listFiles(selectedDay.id) : [];
+  const {
+    data: files = [],
+    refetch: refetchFiles,
+    isLoading: isLoadingFiles,
+  } = useQuery({
+    queryKey: ["files", selectedDayId],
+    queryFn: () => api.listFiles(selectedDayId!),
+    enabled: !!selectedDayId,
+  });
+
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   useEffect(() => {
     if (!files.find((f) => f.id === selectedFileId)) {
@@ -71,9 +120,10 @@ function Dashboard() {
     setDraft(currentFile?.content ?? "");
   }, [currentFile?.id]);
 
-  const saveFile = () => {
+  const saveFile = async () => {
     if (!currentFile) return;
-    api.updateFile(currentFile.id, { content: draft });
+    await api.updateFile(currentFile.id, { content: draft });
+    refetchFiles();
     toast.success("Saved");
   };
   const formatAI = async () => {
@@ -94,12 +144,18 @@ function Dashboard() {
         {/* Sidebar */}
         <aside className="space-y-4">
           <div className="rounded-xl border border-border bg-card p-4">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Subject</Label>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+              Subject
+            </Label>
             <Select value={selectedCat} onValueChange={setSelectedCat}>
-              <SelectTrigger className="mt-2 w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="mt-2 w-full">
+                <SelectValue placeholder="Select a subject" />
+              </SelectTrigger>
               <SelectContent>
                 {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -108,10 +164,21 @@ function Dashboard() {
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Topics (newest first)
               </span>
-              <NewTopicDialog categoryId={selectedCat} onCreated={(t) => setSelectedTopicId(t.id)} />
+              <NewTopicDialog
+                categoryId={selectedCat}
+                onCreated={(t) => {
+                  setSelectedTopicId(t.id);
+                  refetchTopics();
+                }}
+              />
             </div>
             <ul className="mt-2 space-y-0.5">
-              {topics.length === 0 && (
+              {isLoadingTopics && (
+                <li className="py-2 text-center">
+                  <Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" />
+                </li>
+              )}
+              {!isLoadingTopics && topics.length === 0 && (
                 <li className="rounded-md px-2 py-2 text-xs text-muted-foreground">No topics</li>
               )}
               {topics.map((t) => (
@@ -137,11 +204,24 @@ function Dashboard() {
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Days
                 </span>
-                <NewDayDialog topic={selectedTopic} onCreated={(d) => setSelectedDayId(d.id)} />
+                <NewDayDialog
+                  topic={selectedTopic}
+                  onCreated={(d) => {
+                    setSelectedDayId(d.id);
+                    refetchDays();
+                  }}
+                />
               </div>
               <ul className="mt-2 space-y-0.5">
-                {days.length === 0 && (
-                  <li className="rounded-md px-2 py-2 text-xs text-muted-foreground">No days yet</li>
+                {isLoadingDays && (
+                  <li className="py-2 text-center">
+                    <Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" />
+                  </li>
+                )}
+                {!isLoadingDays && days.length === 0 && (
+                  <li className="rounded-md px-2 py-2 text-xs text-muted-foreground">
+                    No days yet
+                  </li>
                 )}
                 {days.map((d) => (
                   <li key={d.id}>
@@ -155,7 +235,8 @@ function Dashboard() {
                     >
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <span className="truncate">
-                        Day {d.dayNumber}{d.title ? ` — ${d.title}` : ""}
+                        Day {d.dayNumber}
+                        {d.title ? ` — ${d.title}` : ""}
                       </span>
                     </button>
                   </li>
@@ -188,8 +269,14 @@ function Dashboard() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <EditTopicDialog topic={selectedTopic} />
-                  <DeleteTopic topic={selectedTopic} onDeleted={() => setSelectedTopicId(null)} />
+                  <EditTopicDialog topic={selectedTopic} onUpdated={refetchTopics} />
+                  <DeleteTopic
+                    topic={selectedTopic}
+                    onDeleted={() => {
+                      setSelectedTopicId(null);
+                      refetchTopics();
+                    }}
+                  />
                 </div>
               </div>
 
@@ -209,8 +296,14 @@ function Dashboard() {
                       </h2>
                     </div>
                     <div className="flex items-center gap-2">
-                      <EditDayDialog day={selectedDay} />
-                      <DeleteDay day={selectedDay} onDeleted={() => setSelectedDayId(null)} />
+                      <EditDayDialog day={selectedDay} onUpdated={refetchDays} />
+                      <DeleteDay
+                        day={selectedDay}
+                        onDeleted={() => {
+                          setSelectedDayId(null);
+                          refetchDays();
+                        }}
+                      />
                     </div>
                   </div>
 
@@ -225,21 +318,33 @@ function Dashboard() {
                   <div className="rounded-xl border border-border bg-card">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
                       <div className="flex flex-wrap items-center gap-1">
-                        {files.map((f) => (
-                          <button
-                            key={f.id}
-                            onClick={() => setSelectedFileId(f.id)}
-                            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-xs transition ${
-                              selectedFileId === f.id
-                                ? "bg-accent text-accent-foreground"
-                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                            }`}
-                          >
-                            <FileCode2 className="h-3.5 w-3.5" />
-                            {f.displayName}
-                          </button>
-                        ))}
-                        <NewFileDialog dayId={selectedDay.id} onCreated={(f) => setSelectedFileId(f.id)} />
+                        {isLoadingFiles ? (
+                          <div className="px-2 py-1">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : (
+                          files.map((f) => (
+                            <button
+                              key={f.id}
+                              onClick={() => setSelectedFileId(f.id)}
+                              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-xs transition ${
+                                selectedFileId === f.id
+                                  ? "bg-accent text-accent-foreground"
+                                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                              }`}
+                            >
+                              <FileCode2 className="h-3.5 w-3.5" />
+                              {f.displayName}
+                            </button>
+                          ))
+                        )}
+                        <NewFileDialog
+                          dayId={selectedDay.id}
+                          onCreated={(f) => {
+                            setSelectedFileId(f.id);
+                            refetchFiles();
+                          }}
+                        />
                       </div>
                       {currentFile && (
                         <div className="flex items-center gap-2">
@@ -249,7 +354,13 @@ function Dashboard() {
                           <Button size="sm" onClick={saveFile}>
                             <Save className="mr-1.5 h-4 w-4" /> Save
                           </Button>
-                          <DeleteFile file={currentFile} />
+                          <DeleteFile
+                            file={currentFile}
+                            onDeleted={() => {
+                              setSelectedFileId(null);
+                              refetchFiles();
+                            }}
+                          />
                         </div>
                       )}
                     </div>
@@ -262,9 +373,10 @@ function Dashboard() {
                             </Label>
                             <Textarea
                               value={currentFile.aiNote ?? ""}
-                              onChange={(e) =>
-                                api.updateFile(currentFile.id, { aiNote: e.target.value })
-                              }
+                              onChange={async (e) => {
+                                await api.updateFile(currentFile.id, { aiNote: e.target.value });
+                                refetchFiles();
+                              }}
                               rows={2}
                               placeholder="e.g. Demonstrates flexbox row alignment with 3 items"
                             />
@@ -294,7 +406,13 @@ function Dashboard() {
   );
 }
 
-function NewTopicDialog({ categoryId, onCreated }: { categoryId: string; onCreated: (t: Topic) => void }) {
+function NewTopicDialog({
+  categoryId,
+  onCreated,
+}: {
+  categoryId: string;
+  onCreated: (t: Topic) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -306,56 +424,101 @@ function NewTopicDialog({ categoryId, onCreated }: { categoryId: string; onCreat
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>New topic</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>New topic</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Positions in CSS" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Positions in CSS"
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Description (optional)</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
           <Button
             disabled={!title.trim()}
-            onClick={() => {
-              const t = api.createTopic({ categoryId, title: title.trim(), description: description.trim() || undefined });
+            onClick={async () => {
+              const t = await api.createTopic({
+                categoryId,
+                title: title.trim(),
+                description: description.trim() || undefined,
+              });
               onCreated(t);
-              setOpen(false); setTitle(""); setDescription("");
+              setOpen(false);
+              setTitle("");
+              setDescription("");
               toast.success("Topic created");
             }}
-          >Create</Button>
+          >
+            Create
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function EditTopicDialog({ topic }: { topic: Topic }) {
+function EditTopicDialog({ topic, onUpdated }: { topic: Topic; onUpdated: () => void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(topic.title);
   const [description, setDescription] = useState(topic.description ?? "");
-  useEffect(() => { setTitle(topic.title); setDescription(topic.description ?? ""); }, [topic.id]);
+  useEffect(() => {
+    setTitle(topic.title);
+    setDescription(topic.description ?? "");
+  }, [topic.id]);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button variant="outline" size="sm">Edit</Button></DialogTrigger>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          Edit
+        </Button>
+      </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Edit topic</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Edit topic</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1.5"><Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>Description</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></div>
+          <div className="space-y-1.5">
+            <Label>Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Description</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={() => {
-            api.updateTopic(topic.id, { title, description });
-            setOpen(false); toast.success("Topic updated");
-          }}>Save</Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              await api.updateTopic(topic.id, { title, description });
+              onUpdated();
+              setOpen(false);
+              toast.success("Topic updated");
+            }}
+          >
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -380,8 +543,14 @@ function DeleteTopic({ topic, onDeleted }: { topic: Topic; onDeleted: () => void
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => { api.deleteTopic(topic.id); onDeleted(); toast.success("Topic deleted"); }}
-          >Delete</AlertDialogAction>
+            onClick={async () => {
+              await api.deleteTopic(topic.id);
+              onDeleted();
+              toast.success("Topic deleted");
+            }}
+          >
+            Delete
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -395,54 +564,102 @@ function NewDayDialog({ topic, onCreated }: { topic: Topic; onCreated: (d: Day) 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" className="h-7 w-7"><Plus className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" className="h-7 w-7">
+          <Plus className="h-4 w-4" />
+        </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>New day entry</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>New day entry</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>Day title (optional)</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Absolute & fixed" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Absolute & fixed"
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Notes (optional)</Label>
-            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} placeholder="What you covered today…" />
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={4}
+              placeholder="What you covered today…"
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={() => {
-            const d = api.createDay({ topicId: topic.id, title: title.trim() || undefined, note: note.trim() || undefined });
-            onCreated(d); setOpen(false); setTitle(""); setNote(""); toast.success(`Day ${d.dayNumber} added`);
-          }}>Add day</Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              const d = await api.createDay({
+                topicId: topic.id,
+                title: title.trim() || undefined,
+                note: note.trim() || undefined,
+              });
+              onCreated(d);
+              setOpen(false);
+              setTitle("");
+              setNote("");
+              toast.success(`Day ${d.dayNumber} added`);
+            }}
+          >
+            Add day
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function EditDayDialog({ day }: { day: Day }) {
+function EditDayDialog({ day, onUpdated }: { day: Day; onUpdated: () => void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(day.title ?? "");
   const [note, setNote] = useState(day.note ?? "");
-  useEffect(() => { setTitle(day.title ?? ""); setNote(day.note ?? ""); }, [day.id]);
+  useEffect(() => {
+    setTitle(day.title ?? "");
+    setNote(day.note ?? "");
+  }, [day.id]);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button variant="outline" size="sm">Edit</Button></DialogTrigger>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          Edit
+        </Button>
+      </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Edit day {day.dayNumber}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Edit day {day.dayNumber}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1.5"><Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>Notes</Label>
-            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={5} /></div>
+          <div className="space-y-1.5">
+            <Label>Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={5} />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={() => {
-            api.updateDay(day.id, { title: title || undefined, note: note || undefined });
-            setOpen(false); toast.success("Day updated");
-          }}>Save</Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              await api.updateDay(day.id, { title: title || undefined, note: note || undefined });
+              onUpdated();
+              setOpen(false);
+              toast.success("Day updated");
+            }}
+          >
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -464,7 +681,13 @@ function DeleteDay({ day, onDeleted }: { day: Day; onDeleted: () => void }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => { api.deleteDay(day.id); onDeleted(); toast.success("Day deleted"); }}>
+          <AlertDialogAction
+            onClick={async () => {
+              await api.deleteDay(day.id);
+              onDeleted();
+              toast.success("Day deleted");
+            }}
+          >
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -486,45 +709,79 @@ function NewFileDialog({ dayId, onCreated }: { dayId: string; onCreated: (f: Cod
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>Add file</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Add file</DialogTitle>
+        </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5"><Label>File name</Label>
-            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="font-mono" /></div>
-          <div className="space-y-1.5"><Label>Language</Label>
+          <div className="space-y-1.5">
+            <Label>File name</Label>
+            <Input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="font-mono"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Language</Label>
             <Select value={language} onValueChange={(v) => setLanguage(v as CodeFile["language"])}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="html">HTML</SelectItem>
                 <SelectItem value="css">CSS</SelectItem>
                 <SelectItem value="javascript">JavaScript</SelectItem>
                 <SelectItem value="text">Text</SelectItem>
               </SelectContent>
-            </Select></div>
+            </Select>
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label>Content</Label>
-          <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={10} className="font-mono text-xs" />
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={10}
+            className="font-mono text-xs"
+          />
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
           <Button
             disabled={!displayName.trim()}
-            onClick={() => {
-              const f = api.createFile({ dayId, displayName, filename: displayName, language, content });
-              onCreated(f); setOpen(false); setContent(""); toast.success("File added");
+            onClick={async () => {
+              const f = await api.createFile({
+                dayId,
+                displayName,
+                filename: displayName,
+                language,
+                content,
+              });
+              onCreated(f);
+              setOpen(false);
+              setContent("");
+              toast.success("File added");
             }}
-          >Add</Button>
+          >
+            Add
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function DeleteFile({ file }: { file: CodeFile }) {
+function DeleteFile({ file, onDeleted }: { file: CodeFile; onDeleted: () => void }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+        >
           <Trash2 className="h-4 w-4" />
         </Button>
       </AlertDialogTrigger>
@@ -535,7 +792,13 @@ function DeleteFile({ file }: { file: CodeFile }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => { api.deleteFile(file.id); toast.success("File deleted"); }}>
+          <AlertDialogAction
+            onClick={async () => {
+              await api.deleteFile(file.id);
+              onDeleted();
+              toast.success("File deleted");
+            }}
+          >
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>
