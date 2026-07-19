@@ -40,7 +40,9 @@ function stripComments(content: string, language: string): string {
 const now = () => new Date().toISOString();
 
 async function main() {
-  const uri = process.env.MONGO_URI || "mongodb+srv://trylaptop2024:trylaptop2024@cluster0.q8qtgtu.mongodb.net/?appName=Cluster0";
+  const uri =
+    process.env.MONGO_URI ||
+    "mongodb+srv://trylaptop2024:trylaptop2024@cluster0.q8qtgtu.mongodb.net/?appName=Cluster0";
   const client = new MongoClient(uri);
 
   try {
@@ -61,13 +63,62 @@ async function main() {
 
     // 1. Create Meaningful Topics
     const topicsData = [
-      { id: uid("t"), categoryId: "c-html", title: "HTML Basics", description: "Days 1-5", min: 1, max: 5 },
-      { id: uid("t"), categoryId: "c-html", title: "HTML Tables & Links", description: "Days 6-8", min: 6, max: 8 },
-      { id: uid("t"), categoryId: "c-html", title: "HTML Semantic & Media", description: "Days 9-10", min: 9, max: 10 },
-      { id: uid("t"), categoryId: "c-html", title: "HTML Forms", description: "Days 11-12", min: 11, max: 12 },
-      { id: uid("t"), categoryId: "c-css", title: "CSS Basics", description: "Days 13-16", min: 13, max: 16 },
-      { id: uid("t"), categoryId: "c-css", title: "CSS Box Model & Layout", description: "Days 17-20", min: 17, max: 20 },
-      { id: uid("t"), categoryId: "c-css", title: "CSS Advanced", description: "Days 21-25", min: 21, max: 25 },
+      {
+        id: uid("t"),
+        categoryId: "c-html",
+        title: "HTML Basics",
+        description: "Days 1-5",
+        min: 1,
+        max: 5,
+      },
+      {
+        id: uid("t"),
+        categoryId: "c-html",
+        title: "HTML Tables & Links",
+        description: "Days 6-8",
+        min: 6,
+        max: 8,
+      },
+      {
+        id: uid("t"),
+        categoryId: "c-html",
+        title: "HTML Semantic & Media",
+        description: "Days 9-10",
+        min: 9,
+        max: 10,
+      },
+      {
+        id: uid("t"),
+        categoryId: "c-html",
+        title: "HTML Forms",
+        description: "Days 11-12",
+        min: 11,
+        max: 12,
+      },
+      {
+        id: uid("t"),
+        categoryId: "c-css",
+        title: "CSS Basics",
+        description: "Days 13-16",
+        min: 13,
+        max: 16,
+      },
+      {
+        id: uid("t"),
+        categoryId: "c-css",
+        title: "CSS Box Model & Layout",
+        description: "Days 17-20",
+        min: 17,
+        max: 20,
+      },
+      {
+        id: uid("t"),
+        categoryId: "c-css",
+        title: "CSS Advanced",
+        description: "Days 21-25",
+        min: 21,
+        max: 25,
+      },
     ];
 
     for (const t of topicsData) {
@@ -86,10 +137,10 @@ async function main() {
     // 2. Read WebM3 directory
     const webM3Dir = path.resolve(process.cwd(), "WebM3");
     const entries = await fs.readdir(webM3Dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      
+
       const folderName = entry.name;
       const dayMatch = folderName.match(/Day(\d+)/i);
       if (!dayMatch) {
@@ -98,10 +149,10 @@ async function main() {
       }
 
       const dayNumber = parseInt(dayMatch[1], 10);
-      
+
       // Determine which topic this day belongs to
-      const targetTopic = topicsData.find(t => dayNumber >= t.min && dayNumber <= t.max);
-      
+      const targetTopic = topicsData.find((t) => dayNumber >= t.min && dayNumber <= t.max);
+
       if (!targetTopic) {
         console.log(`No topic mapping found for Day ${dayNumber}. Skipping.`);
         continue;
@@ -124,7 +175,7 @@ async function main() {
       const fileEntries = await fs.readdir(dayDir, { withFileTypes: true });
 
       let displayOrder = 1;
-      
+
       for (const fileEntry of fileEntries) {
         if (!fileEntry.isFile()) continue;
 
@@ -140,7 +191,7 @@ async function main() {
         }
 
         let content = await fs.readFile(path.join(dayDir, fileEntry.name), "utf-8");
-        
+
         // Remove detailed/long comments
         content = stripComments(content, language);
 

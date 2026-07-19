@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Check, ChevronRight, Copy } from "lucide-react";
+import { Check, ChevronRight, Copy, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CodeViewer } from "@/components/CodeViewer";
@@ -34,6 +34,7 @@ function DayPage() {
 
   const [copied, setCopied] = useState(false);
   const [activeFile, setActiveFile] = useState<string | undefined>(undefined);
+  const isLuffy = api.getUsername() === "luffy";
 
   useEffect(() => {
     if (files[0]) setActiveFile((prev) => prev ?? files[0].id);
@@ -84,9 +85,9 @@ function DayPage() {
               {topic.title}
             </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-foreground">
-              {day.title && day.title !== `Day ${day.dayNumber}` 
-                 ? `Day ${day.dayNumber} : ${day.title}` 
-                 : `Day ${day.dayNumber}`}
+              {day.title && day.title !== `Day ${day.dayNumber}`
+                ? `Day ${day.dayNumber} : ${day.title}`
+                : `Day ${day.dayNumber}`}
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
               {new Date(day.createdAt).toLocaleString()}
@@ -133,9 +134,27 @@ function DayPage() {
             </div>
             {files.map((f) => (
               <TabsContent key={f.id} value={f.id} className="mt-4">
-                {f.aiNote && (
+                {f.aiNote && isLuffy && (
                   <div className="mb-3 rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
                     <span className="font-semibold text-foreground">AI note:</span> {f.aiNote}
+                  </div>
+                )}
+                {f.content.includes(".zip") && (
+                  <div className="mb-4">
+                    {(() => {
+                      const match = f.content.match(/\[(.*?)\]\((.*?\.zip)\)/);
+                      if (match) {
+                        return (
+                          <Button asChild>
+                            <a href={match[2]} download>
+                              <Download className="mr-2 h-4 w-4" />
+                              {match[1]}
+                            </a>
+                          </Button>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 )}
                 <CodeViewer value={f.content} language={f.language} />

@@ -1,10 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  Search,
-  LayoutDashboard,
-  LogOut,
-  FolderTree,
-} from "lucide-react";
+import { Search, LayoutDashboard, LogOut, FolderTree } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

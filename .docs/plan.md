@@ -41,6 +41,7 @@ Cloudflare Workers can't open raw TCP, so the standard `mongodb` driver doesn't 
 (The MongoDB URI field stays for reference / future native-driver backend, but the live app talks to Atlas Data API.)
 
 All reads/writes go through a single server function `mongoRequest` that:
+
 1. Loads the Data API creds from a server-only settings store (persisted per-installation in a signed cookie so it survives refresh without a DB).
 2. Calls `POST {dataApiUrl}/action/{find|insertOne|updateOne|deleteOne}` with `apiKey` header.
 3. Returns plain DTOs.

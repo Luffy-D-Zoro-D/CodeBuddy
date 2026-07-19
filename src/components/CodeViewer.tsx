@@ -26,7 +26,7 @@ export function CodeViewer({ value, language, readOnly = true, onChange, height 
   }
 
   return (
-    <div 
+    <div
       className="overflow-hidden rounded-md border border-border"
       style={typeof height === "string" ? { height } : undefined}
     >

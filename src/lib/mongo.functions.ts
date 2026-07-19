@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { mongoRequest } from "./mongo.server";
-import { createSessionToken, verifyCredentials, verifyToken, changePassword, verifyIsLuffy } from "./auth.server";
+import {
+  createSessionToken,
+  verifyCredentials,
+  verifyToken,
+  changePassword,
+  verifyIsLuffy,
+} from "./auth.server";
 import { formatCodeWithGroq } from "./groq.server";
 
 // Authenticated proxy for Atlas Data API calls

@@ -64,9 +64,16 @@ function Dashboard() {
     queryFn: () => api.listCategories(),
   });
 
-  const [selectedCat, setSelectedCat] = useState<string>("");
+  const [selectedCat, setSelectedCat] = useState<string>(
+    () => localStorage.getItem("dash_cat") || "",
+  );
   useEffect(() => {
-    if (!selectedCat && categories[0]) setSelectedCat(categories[0].id);
+    if (selectedCat) {
+      localStorage.setItem("dash_cat", selectedCat);
+    }
+    if (!selectedCat && categories[0]) {
+      setSelectedCat(categories[0].id);
+    }
   }, [categories, selectedCat]);
 
   const {
@@ -79,9 +86,13 @@ function Dashboard() {
     enabled: !!selectedCat,
   });
 
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(() =>
+    localStorage.getItem("dash_topic"),
+  );
   useEffect(() => {
-    if (!topics.find((t) => t.id === selectedTopicId)) {
+    if (selectedTopicId) localStorage.setItem("dash_topic", selectedTopicId);
+
+    if (topics.length > 0 && !topics.find((t) => t.id === selectedTopicId)) {
       setSelectedTopicId(topics[0]?.id ?? null);
     }
   }, [topics, selectedTopicId]);
@@ -97,9 +108,13 @@ function Dashboard() {
     enabled: !!selectedTopicId,
   });
 
-  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(() =>
+    localStorage.getItem("dash_day"),
+  );
   useEffect(() => {
-    if (!days.find((d) => d.id === selectedDayId)) {
+    if (selectedDayId) localStorage.setItem("dash_day", selectedDayId);
+
+    if (days.length > 0 && !days.find((d) => d.id === selectedDayId)) {
       setSelectedDayId(days[0]?.id ?? null);
     }
   }, [days, selectedDayId]);
@@ -245,7 +260,9 @@ function Dashboard() {
                     >
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <span className="truncate">
-                        {d.title && d.title !== `Day ${d.dayNumber}` ? `Day ${d.dayNumber} : ${d.title}` : `Day ${d.dayNumber}`}
+                        {d.title && d.title !== `Day ${d.dayNumber}`
+                          ? `Day ${d.dayNumber} : ${d.title}`
+                          : `Day ${d.dayNumber}`}
                       </span>
                     </button>
                   </li>
@@ -305,8 +322,8 @@ function Dashboard() {
                           Day {selectedDay.dayNumber}
                         </p>
                         <h2 className="mt-1 text-lg font-semibold text-foreground">
-                          {selectedDay.title && selectedDay.title !== `Day ${selectedDay.dayNumber}` 
-                            ? `Day ${selectedDay.dayNumber} : ${selectedDay.title}` 
+                          {selectedDay.title && selectedDay.title !== `Day ${selectedDay.dayNumber}`
+                            ? `Day ${selectedDay.dayNumber} : ${selectedDay.title}`
                             : `Day ${selectedDay.dayNumber}`}
                         </h2>
                       </div>
@@ -331,7 +348,7 @@ function Dashboard() {
                     {currentFile && isLuffy && (
                       <div className="mt-6 space-y-1.5 border-t border-border pt-4">
                         <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-                          AI note (context for Format-with-AI & students)
+                          AI note (context for Format-with-AI)
                         </Label>
                         <Textarea
                           value={currentFile.aiNote ?? ""}
@@ -418,7 +435,7 @@ function Dashboard() {
                       No files yet. Add one to start.
                     </div>
                   )}
-                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -582,10 +599,15 @@ function DeleteTopic({ topic, onDeleted }: { topic: Topic; onDeleted: () => void
 function getFormattedDate() {
   const date = new Date();
   const day = date.getDate();
-  const suffix = (day === 1 || day === 21 || day === 31) ? "st" :
-                 (day === 2 || day === 22) ? "nd" :
-                 (day === 3 || day === 23) ? "rd" : "th";
-  const month = date.toLocaleString('default', { month: 'short' });
+  const suffix =
+    day === 1 || day === 21 || day === 31
+      ? "st"
+      : day === 2 || day === 22
+        ? "nd"
+        : day === 3 || day === 23
+          ? "rd"
+          : "th";
+  const month = date.toLocaleString("default", { month: "short" });
   const year = date.getFullYear().toString().slice(-2);
   return `${day}${suffix}-${month}-${year}`;
 }

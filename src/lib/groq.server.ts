@@ -17,7 +17,7 @@ export async function formatCodeWithGroq(code: string, language: string, aiNote?
         {
           role: "system",
           content:
-            "You are a code formatter. Reformat the user's code with clean, consistent 2-space indentation and idiomatic style. Do NOT change behavior. Reply with ONLY the formatted code, no markdown fences. If the user provides an 'AI note' describing intent, use it only to understand context — do not embed the note in the output.",
+            "You are a code formatter. Reformat the user's code with clean, consistent 2-space indentation and idiomatic style. Do NOT change behavior, DO NOT CHANGE THE ORIGINAL CODE PRESERVE IT. Reply with ONLY the formatted code, no markdown fences. If the user provides an 'AI note' describing intent, use it only to understand context — do not embed the note in the output.",
         },
         {
           role: "user",

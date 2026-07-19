@@ -1,7 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CalendarDays, Layers, ChevronDown, ChevronRight, FileCode2, FolderClosed, FolderOpen, Loader2 } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  FileCode2,
+  FolderClosed,
+  FolderOpen,
+  Loader2,
+} from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { api, useStore } from "@/lib/store";
 
@@ -9,6 +19,7 @@ export const Route = createFileRoute("/")({
   loader: async () => {
     const categories = await api.listCategories();
     const topics = await api.listTopics();
+    const recentDays = await api.listRecentDays(3);
 
     // Fetch days for all topics in parallel to calculate counts and find the first day
     const daysPerTopicList = await Promise.all(
@@ -27,7 +38,15 @@ export const Route = createFileRoute("/")({
       categories.map((c) => [c.id, topics.filter((t) => t.categoryId === c.id).length]),
     );
 
-    return { categories, topics, daysPerTopic, firstDayPerTopic, totalDays, topicsPerCategory };
+    return {
+      categories,
+      topics,
+      daysPerTopic,
+      firstDayPerTopic,
+      totalDays,
+      topicsPerCategory,
+      recentDays,
+    };
   },
   component: Index,
   head: () => ({
@@ -48,19 +67,15 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   useStore(); // Keep for real-time reactivity if localStorage is updated
-  const { categories, topics, daysPerTopic, firstDayPerTopic, totalDays } = Route.useLoaderData();
-
-  const recentTopics = topics.slice(0, 3);
+  const { categories, topics, recentDays } = Route.useLoaderData();
+  const topicById = new Map(topics.map((t) => [t.id, t]));
   const catById = new Map(categories.map((c) => [c.id, c]));
 
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-6 pt-10">
-
-
         <section aria-labelledby="cats" className="pb-16">
-
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((c) => (
               <CategoryColumn key={c.id} categoryId={c.id} categorySlug={c.slug} name={c.name} />
@@ -74,42 +89,41 @@ function Index() {
               id="recent-h"
               className="text-sm font-semibold uppercase tracking-wider text-muted-foreground"
             >
-              Recent topics
+              Recent additions
             </h2>
           </div>
-          {recentTopics.length === 0 ? (
+          {recentDays.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border bg-secondary/40 p-8 text-center text-sm text-muted-foreground">
-              No topics yet. Ask your teacher to add one.
+              No material added yet.
             </p>
           ) : (
             <ul className="divide-y divide-border rounded-xl border border-border bg-card">
-              {recentTopics.map((t) => {
-                const cat = catById.get(t.categoryId);
-                const days = daysPerTopic.get(t.id) || 0;
-                const firstDay = firstDayPerTopic.get(t.id);
-                const hasDays = firstDay !== undefined;
+              {recentDays.map((d) => {
+                const topic = topicById.get(d.topicId);
+                const cat = topic ? catById.get(topic.categoryId) : undefined;
+                if (!topic || !cat) return null;
+
+                const dayDisplay =
+                  d.title && d.title !== `Day ${d.dayNumber}`
+                    ? `Day ${d.dayNumber} : ${d.title}`
+                    : `Day ${d.dayNumber}`;
 
                 return (
-                  <li key={t.id}>
+                  <li key={d.id}>
                     <Link
-                      to={hasDays ? "/browse/$category/$topic/$day" : "/browse/$category"}
-                      params={
-                        hasDays
-                          ? { category: cat?.slug ?? "", topic: t.slug, day: String(firstDay) }
-                          : { category: cat?.slug ?? "" }
-                      }
-                      hash={hasDays ? undefined : t.slug}
+                      to="/browse/$category/$topic/$day"
+                      params={{ category: cat.slug, topic: topic.slug, day: String(d.dayNumber) }}
                       className="flex items-center gap-4 px-5 py-4 transition hover:bg-secondary/50"
                     >
                       <CalendarDays className="h-4 w-4 text-muted-foreground" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{t.title}</p>
-                        {t.description && (
-                          <p className="truncate text-sm text-muted-foreground">{t.description}</p>
-                        )}
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {cat.name} — {topic.title}
+                        </p>
+                        <p className="truncate text-sm text-muted-foreground">{dayDisplay}</p>
                       </div>
                       <span className="hidden text-xs text-muted-foreground sm:inline">
-                        {cat?.name} · {days} {days === 1 ? "item" : "items"}
+                        {new Date(d.createdAt).toLocaleDateString()}
                       </span>
                     </Link>
                   </li>
@@ -266,7 +280,9 @@ function DayNode({
             <FolderClosed className="h-3.5 w-3.5 text-muted-foreground" />
           )}
           <span className="truncate font-medium text-foreground">
-            {dayTitle && dayTitle !== `Day ${dayNumber}` ? `Day ${dayNumber} : ${dayTitle}` : `Day ${dayNumber}`}
+            {dayTitle && dayTitle !== `Day ${dayNumber}`
+              ? `Day ${dayNumber} : ${dayTitle}`
+              : `Day ${dayNumber}`}
           </span>
         </button>
         <Link

@@ -165,8 +165,8 @@ export const api = {
     const token = getToken();
     if (!token) return null;
     try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
       const payload = JSON.parse(atob(base64));
       return payload.username as string;
     } catch {
@@ -283,6 +283,17 @@ export const api = {
     })) as any;
     const docs = (res.documents || []) as Day[];
     return docs.sort((a, b) => b.dayNumber - a.dayNumber);
+  },
+  async listRecentDays(limit = 3): Promise<Day[]> {
+    const res = (await runMongoOp({
+      data: {
+        token: getToken(),
+        collection: "days",
+        action: "find",
+        body: { filter: {}, sort: { createdAt: -1 }, limit },
+      },
+    })) as any;
+    return (res.documents || []) as Day[];
   },
   async getDay(topicId: string, dayNumber: number): Promise<Day | undefined> {
     const res = (await runMongoOp({
