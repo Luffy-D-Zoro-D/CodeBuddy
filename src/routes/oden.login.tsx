@@ -13,8 +13,8 @@ export const Route = createFileRoute("/oden/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -64,10 +64,6 @@ function LoginPage() {
           <Button type="submit" className="w-full" disabled={loading} suppressHydrationWarning>
             {loading ? "Signing in…" : "Sign in"}
           </Button>
-          <p className="text-xs text-muted-foreground">
-            Demo credentials: <span className="font-mono">admin</span> /{" "}
-            <span className="font-mono">admin</span>
-          </p>
         </form>
       </div>
     </div>

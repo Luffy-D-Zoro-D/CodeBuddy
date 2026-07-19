@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Save, Sparkles, Trash2, FileCode2, CalendarDays, Loader2 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -48,25 +48,31 @@ function Dashboard() {
   const storeVer = useStore();
   const navigate = useNavigate();
   const [isChecking, setIsChecking] = useState(true);
+  const [isAuthed, setIsAuthed] = useState(true); // default true to bypass SSR mismatch
   const username = api.getUsername();
   const isLuffy = username === "luffy";
 
   useEffect(() => {
     if (!api.isAuthed()) {
-      navigate({ to: "/" });
+      setIsAuthed(false);
     } else {
       setIsChecking(false);
     }
-  }, [navigate, storeVer]);
+  }, [storeVer]);
+
+  if (!isAuthed) {
+    throw notFound();
+  }
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: () => api.listCategories(),
   });
 
-  const [selectedCat, setSelectedCat] = useState<string>(
-    () => localStorage.getItem("dash_cat") || "",
-  );
+  const [selectedCat, setSelectedCat] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("dash_cat") || "";
+  });
   useEffect(() => {
     if (selectedCat) {
       localStorage.setItem("dash_cat", selectedCat);
@@ -86,9 +92,10 @@ function Dashboard() {
     enabled: !!selectedCat,
   });
 
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(() =>
-    localStorage.getItem("dash_topic"),
-  );
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("dash_topic");
+  });
   useEffect(() => {
     if (selectedTopicId) localStorage.setItem("dash_topic", selectedTopicId);
 
@@ -108,9 +115,10 @@ function Dashboard() {
     enabled: !!selectedTopicId,
   });
 
-  const [selectedDayId, setSelectedDayId] = useState<string | null>(() =>
-    localStorage.getItem("dash_day"),
-  );
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("dash_day");
+  });
   useEffect(() => {
     if (selectedDayId) localStorage.setItem("dash_day", selectedDayId);
 
@@ -283,16 +291,16 @@ function Dashboard() {
             <div className="space-y-6 overflow-y-auto pb-6 pr-2">
               <section className="flex flex-col gap-6">
                 <div>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Topic
                       </p>
-                      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
+                      <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight text-foreground">
                         {selectedTopic.title}
                       </h1>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-1">
                       <EditTopicDialog topic={selectedTopic} onUpdated={refetchTopics} />
                       <DeleteTopic
                         topic={selectedTopic}
@@ -316,18 +324,18 @@ function Dashboard() {
                   </div>
                 ) : (
                   <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           Day {selectedDay.dayNumber}
                         </p>
-                        <h2 className="mt-1 text-lg font-semibold text-foreground">
+                        <h2 className="mt-1 break-words text-lg font-semibold text-foreground">
                           {selectedDay.title && selectedDay.title !== `Day ${selectedDay.dayNumber}`
                             ? `Day ${selectedDay.dayNumber} : ${selectedDay.title}`
                             : `Day ${selectedDay.dayNumber}`}
                         </h2>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex shrink-0 items-center gap-1">
                         <EditDayDialog day={selectedDay} onUpdated={refetchDays} />
                         <DeleteDay
                           day={selectedDay}

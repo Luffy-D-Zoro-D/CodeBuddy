@@ -89,7 +89,7 @@ function DayPage() {
                 ? `Day ${day.dayNumber} : ${day.title}`
                 : `Day ${day.dayNumber}`}
             </h1>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground" suppressHydrationWarning>
               {new Date(day.createdAt).toLocaleString()}
             </p>
           </div>

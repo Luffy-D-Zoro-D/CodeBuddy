@@ -27,9 +27,9 @@ export const runMongoOp = createServerFn({ method: "POST" })
 
     // Only 'find' and 'findOne' are public
     if (action !== "find" && action !== "findOne") {
-      const isLuffy = await verifyIsLuffy(token);
-      if (!isLuffy) {
-        throw new Error("Unauthorized: Only the admin (luffy) can perform database mutations");
+      const isAuthed = await verifyToken(token);
+      if (!isAuthed) {
+        throw new Error("Unauthorized: You must be logged in to modify data");
       }
     }
     const result = await mongoRequest(collection, action, body);
