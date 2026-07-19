@@ -84,8 +84,9 @@ function DayPage() {
               {topic.title}
             </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-foreground">
-              Day {day.dayNumber}
-              {day.title ? <span className="text-muted-foreground"> — {day.title}</span> : null}
+              {day.title && day.title !== `Day ${day.dayNumber}` 
+                 ? `Day ${day.dayNumber} : ${day.title}` 
+                 : `Day ${day.dayNumber}`}
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
               {new Date(day.createdAt).toLocaleString()}

@@ -192,8 +192,7 @@ function DayNode({
             <FolderClosed className="h-3.5 w-3.5 text-muted-foreground" />
           )}
           <span className="truncate">
-            Day {dayNumber}
-            {dayTitle ? ` — ${dayTitle}` : ""}
+            {dayTitle && dayTitle !== `Day ${dayNumber}` ? `Day ${dayNumber} : ${dayTitle}` : `Day ${dayNumber}`}
           </span>
         </button>
         <Link

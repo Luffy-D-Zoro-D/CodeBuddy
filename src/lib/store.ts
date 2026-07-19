@@ -296,9 +296,23 @@ export const api = {
     return res.document as Day | undefined;
   },
   async createDay(input: { topicId: string; title?: string; note?: string }): Promise<Day> {
+    const token = getToken();
     let nextNumber = 1;
-    const days = await this.listDays(input.topicId);
-    if (days.length > 0) nextNumber = days[0].dayNumber + 1;
+    try {
+      const res = await runMongoOp({
+        data: {
+          token,
+          collection: "days",
+          action: "find",
+          body: { filter: {}, sort: { dayNumber: -1 }, limit: 1 },
+        },
+      });
+      if (res && res.documents && res.documents.length > 0) {
+        nextNumber = res.documents[0].dayNumber + 1;
+      }
+    } catch (err) {
+      console.error("Failed to find global max day", err);
+    }
 
     const d: Day = {
       id: uid("d"),
@@ -310,7 +324,6 @@ export const api = {
       updatedAt: now(),
     };
 
-    const token = getToken();
     await runMongoOp({
       data: { token, collection: "days", action: "insertOne", body: { document: d } },
     });

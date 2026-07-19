@@ -56,45 +56,11 @@ function Index() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="mx-auto max-w-6xl px-6">
-        <section className="hidden pt-20 pb-14 md:pt-28 md:pb-20 text-center">
-          <h1 className="mx-auto max-w-3xl text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
-            Well organized.
-            <br />
-            <span className="text-primary">Easy to learn.</span>
-          </h1>
-          <div className="mt-8 flex items-center justify-center gap-3">
-            {categories[0] && (
-              <Link
-                to="/browse/$category"
-                params={{ category: categories[0].slug }}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-              >
-                Open {categories[0].name}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            )}
-            <a
-              href="#recent"
-              className="inline-flex items-center rounded-md border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-secondary"
-            >
-              Recent topics
-            </a>
-          </div>
-          <p className="mt-6 text-sm text-muted-foreground">
-            {topics.length} {topics.length === 1 ? "topic" : "topics"} · {totalDays} material
-          </p>
-        </section>
+      <main className="mx-auto max-w-6xl px-6 pt-10">
+
 
         <section aria-labelledby="cats" className="pb-16">
-          <div className="mb-6 flex items-baseline justify-between">
-            <h2
-              id="cats"
-              className="text-sm font-semibold uppercase tracking-wider text-muted-foreground"
-            >
-              Subjects
-            </h2>
-          </div>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((c) => (
               <CategoryColumn key={c.id} categoryId={c.id} categorySlug={c.slug} name={c.name} />
@@ -143,7 +109,7 @@ function Index() {
                         )}
                       </div>
                       <span className="hidden text-xs text-muted-foreground sm:inline">
-                        {cat?.name} · {days} {days === 1 ? "day" : "days"}
+                        {cat?.name} · {days} {days === 1 ? "item" : "items"}
                       </span>
                     </Link>
                   </li>
@@ -153,11 +119,6 @@ function Index() {
           )}
         </section>
       </main>
-      <footer className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-6 py-8 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} CodeBuddy — Web Technology
-        </div>
-      </footer>
     </div>
   );
 }
@@ -304,9 +265,8 @@ function DayNode({
           ) : (
             <FolderClosed className="h-3.5 w-3.5 text-muted-foreground" />
           )}
-          <span className="truncate">
-            Day {dayNumber}
-            {dayTitle ? ` — ${dayTitle}` : ""}
+          <span className="truncate font-medium text-foreground">
+            {dayTitle && dayTitle !== `Day ${dayNumber}` ? `Day ${dayNumber} : ${dayTitle}` : `Day ${dayNumber}`}
           </span>
         </button>
         <Link

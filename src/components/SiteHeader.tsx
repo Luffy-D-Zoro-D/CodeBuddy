@@ -3,7 +3,6 @@ import {
   Search,
   LayoutDashboard,
   LogOut,
-  Settings as SettingsIcon,
   FolderTree,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -25,7 +24,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
         <Link to="/" className="flex items-baseline gap-2">
-          <span className="text-xl font-semibold tracking-tight text-foreground">CodeBuddy</span>
+          <span className="text-2xl font-bold tracking-tight text-foreground">CodeBuddy</span>
         </Link>
 
         <form
@@ -47,35 +46,30 @@ export function SiteHeader() {
         </form>
 
         <nav className="ml-auto flex items-center gap-1">
-          <Button asChild variant="ghost" size="sm">
+          <Button asChild variant="ghost" className="text-base font-medium">
             <Link to="/explorer">
-              <FolderTree className="mr-1.5 h-4 w-4" />
+              <FolderTree className="mr-2 h-5 w-5" />
               Explorer
             </Link>
           </Button>
           {authed ? (
             <>
-              <Button asChild variant="ghost" size="sm">
+              <Button asChild variant="ghost" className="text-base font-medium">
                 <Link to="/dashboard">
-                  <LayoutDashboard className="mr-1.5 h-4 w-4" />
+                  <LayoutDashboard className="mr-2 h-5 w-5" />
                   Dashboard
                 </Link>
               </Button>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/settings">
-                  <SettingsIcon className="mr-1.5 h-4 w-4" />
-                  Settings
-                </Link>
-              </Button>
+
               <Button
                 variant="ghost"
-                size="sm"
+                className="text-base font-medium"
                 onClick={() => {
                   api.logout();
                   navigate({ to: "/" });
                 }}
               >
-                <LogOut className="mr-1.5 h-4 w-4" />
+                <LogOut className="mr-2 h-5 w-5" />
                 Sign out
               </Button>
             </>

@@ -31,7 +31,10 @@ export async function mongoRequest(
 
   switch (action) {
     case "find": {
-      const documents = await collection.find(body.filter || {}).toArray();
+      let cursor = collection.find(body.filter || {});
+      if (body.sort) cursor = cursor.sort(body.sort);
+      if (body.limit) cursor = cursor.limit(body.limit);
+      const documents = await cursor.toArray();
       return { documents: JSON.parse(JSON.stringify(documents)) as any[] };
     }
     case "findOne": {
