@@ -48,9 +48,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <p className="mt-2 text-sm text-red-500 font-medium">
+          {error instanceof Error ? error.message : "Unknown error occurred"}
         </p>
+        <div className="mt-4 bg-secondary p-4 rounded-md text-left text-xs font-mono max-w-full overflow-auto text-muted-foreground whitespace-pre-wrap">
+          {error instanceof Error && error.stack}
+        </div>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {

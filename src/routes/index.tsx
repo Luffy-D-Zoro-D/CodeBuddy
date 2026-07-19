@@ -63,6 +63,19 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  errorComponent: ({ error }) => {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
+        <h1 className="text-2xl font-bold text-red-500 mb-4">Error loading page</h1>
+        <p className="mb-4 text-muted-foreground max-w-md">
+          {error instanceof Error ? error.message : "Unknown error occurred"}
+        </p>
+        <div className="bg-secondary p-4 rounded-md text-left text-xs font-mono max-w-2xl overflow-auto">
+          {error instanceof Error && error.stack}
+        </div>
+      </div>
+    );
+  },
 });
 
 function Index() {
