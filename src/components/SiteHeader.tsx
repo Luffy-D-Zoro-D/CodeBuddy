@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, LayoutDashboard, LogOut, FolderTree } from "lucide-react";
+import { Search, LayoutDashboard, LogOut, FolderTree, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,12 @@ export function SiteHeader() {
                 <Link to="/dashboard">
                   <LayoutDashboard className="mr-2 h-5 w-5" />
                   Dashboard
+                </Link>
+              </Button>
+
+              <Button asChild variant="ghost" className="text-base font-medium px-2" title="Settings">
+                <Link to="/settings">
+                  <Settings className="h-5 w-5" />
                 </Link>
               </Button>
 

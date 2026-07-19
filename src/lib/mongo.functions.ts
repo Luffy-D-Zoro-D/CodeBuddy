@@ -5,7 +5,7 @@ import {
   createSessionToken,
   verifyCredentials,
   verifyToken,
-  changePassword,
+  updateProfile,
   verifyIsLuffy,
 } from "./auth.server";
 import { formatCodeWithGroq } from "./groq.server";
@@ -39,22 +39,22 @@ export const runMongoOp = createServerFn({ method: "POST" })
 export const loginFn = createServerFn({ method: "POST" })
   .validator((d: { username: string; password: string }) => d)
   .handler(async ({ data: { username, password } }) => {
-    const isValid = await verifyCredentials(username, password);
-    if (!isValid) {
+    const res = await verifyCredentials(username, password);
+    if (!res.success) {
       throw new Error("Invalid credentials");
     }
-    const token = await createSessionToken(username);
+    const token = await createSessionToken(res.actualUsername || username, res.role);
     return { token };
   });
 
-export const changePasswordFn = createServerFn({ method: "POST" })
-  .validator((d: { token: string; newPassword: string }) => d)
-  .handler(async ({ data: { token, newPassword } }) => {
-    const success = await changePassword(token, newPassword);
-    if (!success) {
-      throw new Error("Unauthorized or failed to change password");
+export const updateProfileFn = createServerFn({ method: "POST" })
+  .validator((d: { token: string; newUsername: string; newPassword?: string }) => d)
+  .handler(async ({ data: { token, newUsername, newPassword } }) => {
+    const res = await updateProfile(token, newUsername, newPassword);
+    if (!res.success) {
+      throw new Error(res.error || "Failed to update profile");
     }
-    return { success };
+    return { token: res.newToken! };
   });
 
 export const formatWithAIFn = createServerFn({ method: "POST" })
@@ -63,7 +63,7 @@ export const formatWithAIFn = createServerFn({ method: "POST" })
     const isAuthed = await verifyToken(token);
     const isLuffy = await verifyIsLuffy(token);
     if (!isAuthed || !isLuffy) {
-      throw new Error("Unauthorized: Only luffy can use AI features");
+      throw new Error("Unauthorized: Only Mugiwara can use AI features");
     }
     const formattedCode = await formatCodeWithGroq(code, language, aiNote);
     return { formattedCode };

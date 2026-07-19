@@ -49,8 +49,8 @@ function Dashboard() {
   const navigate = useNavigate();
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthed, setIsAuthed] = useState(true); // default true to bypass SSR mismatch
-  const username = api.getUsername();
-  const isLuffy = username === "luffy";
+  const role = api.getRole();
+  const isLuffy = role === "admin";
 
   useEffect(() => {
     if (!api.isAuthed()) {

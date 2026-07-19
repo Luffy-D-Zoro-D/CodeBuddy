@@ -3,7 +3,7 @@
 // Backed by MongoDB Atlas Data API via server functions.
 
 import { useSyncExternalStore } from "react";
-import { runMongoOp, loginFn, changePasswordFn, formatWithAIFn } from "./mongo.functions";
+import { runMongoOp, loginFn, updateProfileFn, formatWithAIFn } from "./mongo.functions";
 
 export type Category = {
   id: string;
@@ -156,10 +156,13 @@ export const api = {
     if (typeof window === "undefined") return false;
     return !!loadSession().token;
   },
-  async changePassword(newPassword: string) {
+  async updateProfile(newUsername: string, newPassword?: string) {
     const token = getToken();
     if (!token) throw new Error("Not logged in");
-    await changePasswordFn({ data: { token, newPassword } });
+    const res = await updateProfileFn({ data: { token, newUsername, newPassword } });
+    if (res.token) {
+      commitSession({ token: res.token });
+    }
   },
   getUsername() {
     const token = getToken();
@@ -169,6 +172,18 @@ export const api = {
       const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
       const payload = JSON.parse(atob(base64));
       return payload.username as string;
+    } catch {
+      return null;
+    }
+  },
+  getRole() {
+    const token = getToken();
+    if (!token) return null;
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const payload = JSON.parse(atob(base64));
+      return payload.role as string;
     } catch {
       return null;
     }

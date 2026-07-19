@@ -21,8 +21,8 @@ export function verifyPasswordHash(password: string, hash: string): boolean {
   return key === derivedKey;
 }
 
-export async function createSessionToken(username: string): Promise<string> {
-  const token = await new SignJWT({ username })
+export async function createSessionToken(username: string, role: string = "teacher"): Promise<string> {
+  const token = await new SignJWT({ username, role })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -45,7 +45,7 @@ export async function verifyIsLuffy(token: string | undefined): Promise<boolean>
   if (!token) return false;
   try {
     const payload = decodeJwt(token);
-    return payload.username === "luffy";
+    return payload.role === "admin";
   } catch {
     return false;
   }
@@ -53,49 +53,78 @@ export async function verifyIsLuffy(token: string | undefined): Promise<boolean>
 
 // Ensure the users collection is properly seeded if it doesn't exist
 // This is called during login attempt
-export async function verifyCredentials(username: string, password: string): Promise<boolean> {
-  // Seed luffy if he doesn't exist
+export async function verifyCredentials(username: string, password: string): Promise<{ success: boolean; role?: string; actualUsername?: string }> {
+  // Seed Mugiwara if he doesn't exist
   try {
-    const luffyRes = await mongoRequest("users", "findOne", { filter: { username: "luffy" } });
-    if (!luffyRes.document) {
+    const mugiwaraRes = await mongoRequest("users", "findOne", { filter: { role: "admin" } });
+    if (!mugiwaraRes.document) {
       await mongoRequest("users", "insertOne", {
-        document: { username: "luffy", password: hashPassword("luffy") },
+        document: { username: "Mugiwara", password: hashPassword("SaDBo"), role: "admin" },
       });
     }
   } catch (err) {
-    console.error("MongoDB Error checking/creating luffy:", err);
+    console.error("MongoDB Error checking/creating Mugiwara:", err);
   }
 
-  // Try to find the user
+  // Seed Sir if he doesn't exist
+  try {
+    const sirRes = await mongoRequest("users", "findOne", { filter: { role: "teacher" } });
+    if (!sirRes.document) {
+      await mongoRequest("users", "insertOne", {
+        document: { username: "Sir", password: hashPassword("SirLifts"), role: "teacher" },
+      });
+    }
+  } catch (err) {
+    console.error("MongoDB Error checking/creating Sir:", err);
+  }
+
+  // Try to find the user (case-insensitive)
   let res;
   try {
-    res = await mongoRequest("users", "findOne", { filter: { username } });
+    res = await mongoRequest("users", "findOne", { filter: { username: { $regex: new RegExp(`^${username}$`, "i") } } });
   } catch (err) {
     console.error("MongoDB Error in verifyCredentials (findOne):", err);
-    return false;
+    return { success: false };
   }
 
   if (!res.document) {
-    return false;
+    return { success: false };
   }
 
-  return verifyPasswordHash(password, res.document.password);
+  const isValid = verifyPasswordHash(password, res.document.password);
+  return { success: isValid, role: res.document.role || "teacher", actualUsername: res.document.username };
 }
 
-export async function changePassword(
+export async function updateProfile(
   token: string | undefined,
-  newPassword: string,
-): Promise<boolean> {
+  newUsername: string,
+  newPassword?: string,
+): Promise<{ success: boolean; newToken?: string; error?: string }> {
   const isAuthed = await verifyToken(token);
-  if (!isAuthed || !token) return false;
+  if (!isAuthed || !token) return { success: false, error: "Not logged in" };
 
   const payload = decodeJwt(token);
-  const username = payload.username as string;
+  const oldUsername = payload.username as string;
+  const role = (payload.role as string) || "teacher";
+
+  // Check if new username is already taken by someone else
+  if (newUsername.toLowerCase() !== oldUsername.toLowerCase()) {
+    const existing = await mongoRequest("users", "findOne", { filter: { username: { $regex: new RegExp(`^${newUsername}$`, "i") } } });
+    if (existing.document) {
+      return { success: false, error: "Username is already taken" };
+    }
+  }
+
+  const updateFields: any = { username: newUsername };
+  if (newPassword) {
+    updateFields.password = hashPassword(newPassword);
+  }
 
   await mongoRequest("users", "updateOne", {
-    filter: { username },
-    update: { $set: { password: hashPassword(newPassword) } },
+    filter: { username: oldUsername },
+    update: { $set: updateFields },
   });
 
-  return true;
+  const newToken = await createSessionToken(newUsername, role);
+  return { success: true, newToken };
 }

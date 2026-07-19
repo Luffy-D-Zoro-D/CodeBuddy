@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as OdenLoginRouteImport } from './routes/oden.login'
 import { Route as BrowseCategoryIndexRouteImport } from './routes/browse.$category.index'
@@ -36,6 +37,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
   '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oden/login': typeof OdenLoginRoute
   '/browse/$category/': typeof BrowseCategoryIndexRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
   '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oden/login': typeof OdenLoginRoute
   '/browse/$category': typeof BrowseCategoryIndexRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
   '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oden/login': typeof OdenLoginRoute
   '/browse/$category/': typeof BrowseCategoryIndexRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explorer'
     | '/search'
+    | '/settings'
     | '/sitemap.xml'
     | '/oden/login'
     | '/browse/$category/'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explorer'
     | '/search'
+    | '/settings'
     | '/sitemap.xml'
     | '/oden/login'
     | '/browse/$category'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explorer'
     | '/search'
+    | '/settings'
     | '/sitemap.xml'
     | '/oden/login'
     | '/browse/$category/'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   ExplorerRoute: typeof ExplorerRoute
   SearchRoute: typeof SearchRoute
+  SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   OdenLoginRoute: typeof OdenLoginRoute
   BrowseCategoryIndexRoute: typeof BrowseCategoryIndexRoute
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   ExplorerRoute: ExplorerRoute,
   SearchRoute: SearchRoute,
+  SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   OdenLoginRoute: OdenLoginRoute,
   BrowseCategoryIndexRoute: BrowseCategoryIndexRoute,
