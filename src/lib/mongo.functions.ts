@@ -21,11 +21,15 @@ export const runMongoOp = createServerFn({ method: "POST" })
     }) => d,
   )
   .handler(async ({ data: { token, collection, action, body } }) => {
+    if (collection === "users") {
+      throw new Error("Direct access to the users collection is strictly prohibited");
+    }
+
     // Only 'find' and 'findOne' are public
     if (action !== "find" && action !== "findOne") {
-      const isAuthed = await verifyToken(token);
-      if (!isAuthed) {
-        throw new Error("Unauthorized");
+      const isLuffy = await verifyIsLuffy(token);
+      if (!isLuffy) {
+        throw new Error("Unauthorized: Only the admin (luffy) can perform database mutations");
       }
     }
     const result = await mongoRequest(collection, action, body);

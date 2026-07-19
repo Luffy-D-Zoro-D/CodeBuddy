@@ -1,7 +1,25 @@
 import { SignJWT, jwtVerify, decodeJwt } from "jose";
 import { mongoRequest } from "./mongo.server";
+import crypto from "crypto";
 
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "fallback_super_secret_dev_key");
+const jwtSecretRaw = process.env.JWT_SECRET;
+if (!jwtSecretRaw && process.env.NODE_ENV === "production") {
+  throw new Error("FATAL: JWT_SECRET environment variable is missing in production!");
+}
+const SECRET = new TextEncoder().encode(jwtSecretRaw || "fallback_super_secret_dev_key");
+
+export function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${derivedKey}`;
+}
+
+export function verifyPasswordHash(password: string, hash: string): boolean {
+  if (!hash.includes(":")) return false;
+  const [salt, key] = hash.split(":");
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
+  return key === derivedKey;
+}
 
 export async function createSessionToken(username: string): Promise<string> {
   const token = await new SignJWT({ username })
@@ -41,7 +59,7 @@ export async function verifyCredentials(username: string, password: string): Pro
     const luffyRes = await mongoRequest("users", "findOne", { filter: { username: "luffy" } });
     if (!luffyRes.document) {
       await mongoRequest("users", "insertOne", {
-        document: { username: "luffy", password: "luffy" },
+        document: { username: "luffy", password: hashPassword("luffy") },
       });
     }
   } catch (err) {
@@ -58,14 +76,10 @@ export async function verifyCredentials(username: string, password: string): Pro
   }
 
   if (!res.document) {
-    // Auto-create any new user so testing multiple users is easy
-    await mongoRequest("users", "insertOne", {
-      document: { username, password },
-    });
-    return true;
+    return false;
   }
 
-  return res.document.password === password;
+  return verifyPasswordHash(password, res.document.password);
 }
 
 export async function changePassword(
@@ -80,7 +94,7 @@ export async function changePassword(
 
   await mongoRequest("users", "updateOne", {
     filter: { username },
-    update: { $set: { password: newPassword } },
+    update: { $set: { password: hashPassword(newPassword) } },
   });
 
   return true;
