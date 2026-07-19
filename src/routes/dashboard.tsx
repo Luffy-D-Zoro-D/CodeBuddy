@@ -148,9 +148,9 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 py-8 lg:grid-cols-[300px_1fr]">
+      <main className="mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-6 py-8 lg:grid-cols-[280px_1fr]">
         {/* Sidebar */}
-        <aside className="space-y-4">
+        <aside className="space-y-4 lg:sticky lg:top-8 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 pb-4">
           <div className="rounded-xl border border-border bg-card p-4">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Subject
@@ -243,8 +243,7 @@ function Dashboard() {
                     >
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <span className="truncate">
-                        Day {d.dayNumber}
-                        {d.title ? ` — ${d.title}` : ""}
+                        {d.title && d.title !== `Day ${d.dayNumber}` ? d.title : `Day ${d.dayNumber}`}
                       </span>
                     </button>
                   </li>
@@ -255,55 +254,60 @@ function Dashboard() {
         </aside>
 
         {/* Main */}
-        <section className="min-w-0">
-          {!selectedTopic ? (
-            <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-12 text-center text-sm text-muted-foreground">
-              Create your first topic (e.g. "Positions in CSS"), then add Day 1, Day 2, and so on.
-            </div>
-          ) : (
-            <>
-              <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Topic
-                  </p>
-                  <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                    {selectedTopic.title}
-                  </h1>
-                  {selectedTopic.description && (
-                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                      {selectedTopic.description}
+        {!selectedTopic ? (
+          <section className="min-w-0 flex items-center justify-center rounded-xl border border-dashed border-border bg-secondary/40 p-12 text-center text-sm text-muted-foreground">
+            Create your first topic (e.g. "Positions in CSS"), then add Day 1, Day 2, and so on.
+          </section>
+        ) : (
+          <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[320px_1fr]">
+            {/* Meta Column */}
+            <section className="flex flex-col gap-6">
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Topic
                     </p>
-                  )}
+                    <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
+                      {selectedTopic.title}
+                    </h1>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <EditTopicDialog topic={selectedTopic} onUpdated={refetchTopics} />
+                    <DeleteTopic
+                      topic={selectedTopic}
+                      onDeleted={() => {
+                        setSelectedTopicId(null);
+                        refetchTopics();
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <EditTopicDialog topic={selectedTopic} onUpdated={refetchTopics} />
-                  <DeleteTopic
-                    topic={selectedTopic}
-                    onDeleted={() => {
-                      setSelectedTopicId(null);
-                      refetchTopics();
-                    }}
-                  />
-                </div>
+                {selectedTopic.description && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {selectedTopic.description}
+                  </p>
+                )}
               </div>
 
               {!selectedDay ? (
-                <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-12 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-8 text-center text-sm text-muted-foreground">
                   Add a day entry from the sidebar to attach today's code and notes.
                 </div>
               ) : (
-                <>
-                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Day {selectedDay.dayNumber}
                       </p>
-                      <h2 className="mt-1 text-xl font-semibold text-foreground">
-                        {selectedDay.title || `Day ${selectedDay.dayNumber}`}
+                      <h2 className="mt-1 text-lg font-semibold text-foreground">
+                        {selectedDay.title && selectedDay.title !== `Day ${selectedDay.dayNumber}` 
+                          ? selectedDay.title 
+                          : `Day ${selectedDay.dayNumber}`}
                       </h2>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <EditDayDialog day={selectedDay} onUpdated={refetchDays} />
                       <DeleteDay
                         day={selectedDay}
@@ -316,99 +320,103 @@ function Dashboard() {
                   </div>
 
                   {selectedDay.note && (
-                    <div className="mb-4 rounded-lg border border-border bg-secondary/40 p-4">
-                      <p className="whitespace-pre-wrap text-sm text-foreground">
-                        {selectedDay.note}
-                      </p>
+                    <div className="mt-4 rounded-lg bg-secondary/50 p-3 text-sm text-foreground">
+                      <p className="whitespace-pre-wrap">{selectedDay.note}</p>
                     </div>
                   )}
 
-                  <div className="rounded-xl border border-border bg-card">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-                      <div className="flex flex-wrap items-center gap-1">
-                        {isLoadingFiles ? (
-                          <div className="px-2 py-1">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : (
-                          files.map((f) => (
-                            <button
-                              key={f.id}
-                              onClick={() => setSelectedFileId(f.id)}
-                              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-xs transition ${
-                                selectedFileId === f.id
-                                  ? "bg-accent text-accent-foreground"
-                                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                              }`}
-                            >
-                              <FileCode2 className="h-3.5 w-3.5" />
-                              {f.displayName}
-                            </button>
-                          ))
-                        )}
-                        <NewFileDialog
-                          dayId={selectedDay.id}
-                          onCreated={(f) => {
-                            setSelectedFileId(f.id);
-                            refetchFiles();
-                          }}
-                        />
-                      </div>
-                      {currentFile && (
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={formatAI}>
-                            <Sparkles className="mr-1.5 h-4 w-4" /> Format with AI
-                          </Button>
-                          <Button size="sm" onClick={saveFile}>
-                            <Save className="mr-1.5 h-4 w-4" /> Save
-                          </Button>
-                          <DeleteFile
-                            file={currentFile}
-                            onDeleted={() => {
-                              setSelectedFileId(null);
-                              refetchFiles();
-                            }}
-                          />
-                        </div>
-                      )}
+                  {currentFile && (
+                    <div className="mt-6 space-y-1.5 border-t border-border pt-4">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                        AI note (context for Format-with-AI & students)
+                      </Label>
+                      <Textarea
+                        value={currentFile.aiNote ?? ""}
+                        onChange={async (e) => {
+                          await api.updateFile(currentFile.id, { aiNote: e.target.value });
+                          refetchFiles();
+                        }}
+                        rows={3}
+                        placeholder="e.g. Demonstrates flexbox row alignment with 3 items"
+                        className="resize-none"
+                      />
                     </div>
-                    <div className="p-4">
-                      {currentFile ? (
-                        <>
-                          <div className="mb-3 space-y-1.5">
-                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-                              AI note (context for Format-with-AI & students)
-                            </Label>
-                            <Textarea
-                              value={currentFile.aiNote ?? ""}
-                              onChange={async (e) => {
-                                await api.updateFile(currentFile.id, { aiNote: e.target.value });
-                                refetchFiles();
-                              }}
-                              rows={2}
-                              placeholder="e.g. Demonstrates flexbox row alignment with 3 items"
-                            />
-                          </div>
-                          <CodeViewer
-                            value={draft}
-                            language={currentFile.language}
-                            readOnly={false}
-                            onChange={setDraft}
-                            height={480}
-                          />
-                        </>
-                      ) : (
-                        <p className="py-16 text-center text-sm text-muted-foreground">
-                          No files yet. Add one to start.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </>
+                  )}
+                </div>
               )}
-            </>
-          )}
-        </section>
+            </section>
+
+            {/* Code Column */}
+            {selectedDay && (
+              <section className="flex h-[calc(100vh-8rem)] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm xl:sticky xl:top-8">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary/20 px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-1">
+                    {isLoadingFiles ? (
+                      <div className="px-2 py-1">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      files.map((f) => (
+                        <button
+                          key={f.id}
+                          onClick={() => setSelectedFileId(f.id)}
+                          className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-xs transition ${
+                            selectedFileId === f.id
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          }`}
+                        >
+                          <FileCode2 className="h-3.5 w-3.5" />
+                          {f.displayName}
+                        </button>
+                      ))
+                    )}
+                    <NewFileDialog
+                      dayId={selectedDay.id}
+                      onCreated={(f) => {
+                        setSelectedFileId(f.id);
+                        refetchFiles();
+                      }}
+                    />
+                  </div>
+                  {currentFile && (
+                    <div className="flex items-center gap-1.5">
+                      <Button variant="outline" size="sm" onClick={formatAI} className="h-8">
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Format with AI
+                      </Button>
+                      <Button size="sm" onClick={saveFile} className="h-8">
+                        <Save className="mr-1.5 h-3.5 w-3.5" /> Save
+                      </Button>
+                      <DeleteFile
+                        file={currentFile}
+                        onDeleted={() => {
+                          setSelectedFileId(null);
+                          refetchFiles();
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="relative flex-1 overflow-hidden p-0">
+                  {currentFile ? (
+                    <CodeViewer
+                      value={draft}
+                      language={currentFile.language}
+                      readOnly={false}
+                      onChange={setDraft}
+                      height="100%"
+                    />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center text-sm text-muted-foreground">
+                      <FileCode2 className="mb-2 h-8 w-8 opacity-20" />
+                      No files yet. Add one to start.
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
@@ -565,10 +573,29 @@ function DeleteTopic({ topic, onDeleted }: { topic: Topic; onDeleted: () => void
   );
 }
 
+function getFormattedDate() {
+  const date = new Date();
+  const day = date.getDate();
+  const suffix = (day === 1 || day === 21 || day === 31) ? "st" :
+                 (day === 2 || day === 22) ? "nd" :
+                 (day === 3 || day === 23) ? "rd" : "th";
+  const month = date.toLocaleString('default', { month: 'short' });
+  const year = date.getFullYear().toString().slice(-2);
+  return `${day}${suffix}-${month}-${year}`;
+}
+
 function NewDayDialog({ topic, onCreated }: { topic: Topic; onCreated: (d: Day) => void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setTitle(getFormattedDate());
+      setNote("");
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
