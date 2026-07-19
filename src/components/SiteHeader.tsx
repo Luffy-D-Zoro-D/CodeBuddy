@@ -26,7 +26,6 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
         <Link to="/" className="flex items-baseline gap-2">
           <span className="text-xl font-semibold tracking-tight text-foreground">CodeBuddy</span>
-          <span className="text-xs font-medium text-muted-foreground">WebTech</span>
         </Link>
 
         <form

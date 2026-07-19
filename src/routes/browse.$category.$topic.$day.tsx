@@ -49,12 +49,6 @@ function DayPage() {
     toast.success(`${current.displayName} copied`);
     setTimeout(() => setCopied(false), 1600);
   };
-
-  const copyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href);
-    toast.success("Link copied");
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
@@ -97,10 +91,6 @@ function DayPage() {
               {new Date(day.createdAt).toLocaleString()}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={copyLink}>
-            <Copy className="mr-1.5 h-4 w-4" />
-            Copy link
-          </Button>
         </div>
 
         {day.note && (

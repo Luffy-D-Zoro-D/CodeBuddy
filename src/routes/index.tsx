@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, CalendarDays, Layers } from "lucide-react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, CalendarDays, Layers, ChevronDown, ChevronRight, FileCode2, FolderClosed, FolderOpen, Loader2 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { api, useStore } from "@/lib/store";
 
@@ -8,14 +10,16 @@ export const Route = createFileRoute("/")({
     const categories = await api.listCategories();
     const topics = await api.listTopics();
 
-    // Fetch days for all topics in parallel to calculate counts
+    // Fetch days for all topics in parallel to calculate counts and find the first day
     const daysPerTopicList = await Promise.all(
       topics.map(async (t) => {
         const days = await api.listDays(t.id);
-        return { topicId: t.id, count: days.length };
+        const sortedDays = days.sort((a, b) => a.dayNumber - b.dayNumber);
+        return { topicId: t.id, count: days.length, firstDay: sortedDays[0]?.dayNumber };
       }),
     );
     const daysPerTopic = new Map(daysPerTopicList.map((d) => [d.topicId, d.count]));
+    const firstDayPerTopic = new Map(daysPerTopicList.map((d) => [d.topicId, d.firstDay]));
     const totalDays = daysPerTopicList.reduce((sum, d) => sum + d.count, 0);
 
     // Calculate topics per category
@@ -23,7 +27,7 @@ export const Route = createFileRoute("/")({
       categories.map((c) => [c.id, topics.filter((t) => t.categoryId === c.id).length]),
     );
 
-    return { categories, topics, daysPerTopic, totalDays, topicsPerCategory };
+    return { categories, topics, daysPerTopic, firstDayPerTopic, totalDays, topicsPerCategory };
   },
   component: Index,
   head: () => ({
@@ -44,16 +48,16 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   useStore(); // Keep for real-time reactivity if localStorage is updated
-  const { categories, topics, daysPerTopic, totalDays, topicsPerCategory } = Route.useLoaderData();
+  const { categories, topics, daysPerTopic, firstDayPerTopic, totalDays } = Route.useLoaderData();
 
-  const recentTopics = topics.slice(0, 6);
+  const recentTopics = topics.slice(0, 3);
   const catById = new Map(categories.map((c) => [c.id, c]));
 
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-6">
-        <section className="pt-20 pb-14 md:pt-28 md:pb-20 text-center">
+        <section className="hidden pt-20 pb-14 md:pt-28 md:pb-20 text-center">
           <h1 className="mx-auto max-w-3xl text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
             Well organized.
             <br />
@@ -92,30 +96,9 @@ function Index() {
             </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((c) => {
-              const tCount = topicsPerCategory.get(c.id) || 0;
-              return (
-                <Link
-                  key={c.id}
-                  to="/browse/$category"
-                  params={{ category: c.slug }}
-                  className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition hover:border-primary/40 hover:shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-accent p-2.5">
-                      <Layers className="h-5 w-5 text-accent-foreground" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">{c.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {tCount} {tCount === 1 ? "topic" : "topics"}
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className="absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100" />
-                </Link>
-              );
-            })}
+            {categories.map((c) => (
+              <CategoryColumn key={c.id} categoryId={c.id} categorySlug={c.slug} name={c.name} />
+            ))}
           </div>
         </section>
 
@@ -137,12 +120,19 @@ function Index() {
               {recentTopics.map((t) => {
                 const cat = catById.get(t.categoryId);
                 const days = daysPerTopic.get(t.id) || 0;
+                const firstDay = firstDayPerTopic.get(t.id);
+                const hasDays = firstDay !== undefined;
+
                 return (
                   <li key={t.id}>
                     <Link
-                      to="/browse/$category"
-                      params={{ category: cat?.slug ?? "" }}
-                      hash={t.slug}
+                      to={hasDays ? "/browse/$category/$topic/$day" : "/browse/$category"}
+                      params={
+                        hasDays
+                          ? { category: cat?.slug ?? "", topic: t.slug, day: String(firstDay) }
+                          : { category: cat?.slug ?? "" }
+                      }
+                      hash={hasDays ? undefined : t.slug}
                       className="flex items-center gap-4 px-5 py-4 transition hover:bg-secondary/50"
                     >
                       <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -169,5 +159,189 @@ function Index() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function CategoryColumn({
+  categoryId,
+  categorySlug,
+  name,
+}: {
+  categoryId: string;
+  categorySlug: string;
+  name: string;
+}) {
+  const { data: topics = [], isLoading } = useQuery({
+    queryKey: ["topics", categoryId],
+    queryFn: () => api.listTopics(categoryId),
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="text-lg font-semibold text-foreground">{name}</h2>
+        <span className="text-xs text-muted-foreground">
+          {topics.length} {topics.length === 1 ? "topic" : "topics"}
+        </span>
+      </div>
+      {isLoading ? (
+        <div className="py-4 text-center">
+          <Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : topics.length === 0 ? (
+        <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+          No topics yet
+        </p>
+      ) : (
+        <ul className="space-y-1">
+          {topics.map((t) => (
+            <TopicNode
+              key={t.id}
+              topicId={t.id}
+              title={t.title}
+              topicSlug={t.slug}
+              categorySlug={categorySlug}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function TopicNode({
+  topicId,
+  title,
+  topicSlug,
+  categorySlug,
+}: {
+  topicId: string;
+  title: string;
+  topicSlug: string;
+  categorySlug: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: days = [], isLoading } = useQuery({
+    queryKey: ["days", topicId],
+    queryFn: () => api.listDays(topicId),
+    enabled: open,
+  });
+
+  return (
+    <li>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground hover:bg-secondary"
+      >
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {open ? (
+          <FolderOpen className="h-4 w-4 text-primary" />
+        ) : (
+          <FolderClosed className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className="truncate">{title}</span>
+      </button>
+      {open && (
+        <ul className="mt-1 space-y-0.5 border-l border-border pl-3 ml-2">
+          {isLoading && (
+            <li className="px-2 py-1 text-xs">
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            </li>
+          )}
+          {!isLoading && days.length === 0 && (
+            <li className="px-2 py-1 text-xs text-muted-foreground">No days yet</li>
+          )}
+          {days.map((d) => (
+            <DayNode
+              key={d.id}
+              dayId={d.id}
+              dayNumber={d.dayNumber}
+              dayTitle={d.title}
+              categorySlug={categorySlug}
+              topicSlug={topicSlug}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function DayNode({
+  dayId,
+  dayNumber,
+  dayTitle,
+  categorySlug,
+  topicSlug,
+}: {
+  dayId: string;
+  dayNumber: number;
+  dayTitle?: string;
+  categorySlug: string;
+  topicSlug: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: files = [], isLoading } = useQuery({
+    queryKey: ["files", dayId],
+    queryFn: () => api.listFiles(dayId),
+    enabled: open,
+  });
+
+  return (
+    <li>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="flex flex-1 items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm hover:bg-secondary"
+        >
+          {open ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
+          {open ? (
+            <FolderOpen className="h-3.5 w-3.5 text-primary" />
+          ) : (
+            <FolderClosed className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+          <span className="truncate">
+            Day {dayNumber}
+            {dayTitle ? ` — ${dayTitle}` : ""}
+          </span>
+        </button>
+        <Link
+          to="/browse/$category/$topic/$day"
+          params={{ category: categorySlug, topic: topicSlug, day: String(dayNumber) }}
+          className="rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-secondary hover:text-foreground"
+        >
+          open
+        </Link>
+      </div>
+      {open && (
+        <ul className="mt-0.5 space-y-0.5 border-l border-border pl-3 ml-1.5">
+          {isLoading && (
+            <li className="px-2 py-1">
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            </li>
+          )}
+          {!isLoading && files.length === 0 && (
+            <li className="px-2 py-1 text-xs text-muted-foreground">No files</li>
+          )}
+          {files.map((f) => (
+            <li key={f.id}>
+              <Link
+                to="/browse/$category/$topic/$day"
+                params={{ category: categorySlug, topic: topicSlug, day: String(dayNumber) }}
+                hash={f.id}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <FileCode2 className="h-3 w-3" />
+                {f.displayName}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
