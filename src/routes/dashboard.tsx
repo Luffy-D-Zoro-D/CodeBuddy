@@ -48,6 +48,8 @@ function Dashboard() {
   const storeVer = useStore();
   const navigate = useNavigate();
   const [isChecking, setIsChecking] = useState(true);
+  const username = api.getUsername();
+  const isLuffy = username === "luffy";
 
   useEffect(() => {
     if (!api.isAuthed()) {
@@ -325,7 +327,7 @@ function Dashboard() {
                     </div>
                   )}
 
-                  {currentFile && (
+                  {currentFile && isLuffy && (
                     <div className="mt-6 space-y-1.5 border-t border-border pt-4">
                       <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                         AI note (context for Format-with-AI & students)
@@ -381,9 +383,11 @@ function Dashboard() {
                   </div>
                   {currentFile && (
                     <div className="flex items-center gap-1.5">
-                      <Button variant="outline" size="sm" onClick={formatAI} className="h-8">
-                        <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Format with AI
-                      </Button>
+                      {isLuffy && (
+                        <Button variant="outline" size="sm" onClick={formatAI} className="h-8">
+                          <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Format with AI
+                        </Button>
+                      )}
                       <Button size="sm" onClick={saveFile} className="h-8">
                         <Save className="mr-1.5 h-3.5 w-3.5" /> Save
                       </Button>

@@ -161,6 +161,18 @@ export const api = {
     if (!token) throw new Error("Not logged in");
     await changePasswordFn({ data: { token, newPassword } });
   },
+  getUsername() {
+    const token = getToken();
+    if (!token) return null;
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
+      return payload.username as string;
+    } catch {
+      return null;
+    }
+  },
 
   // categories
   async listCategories(): Promise<Category[]> {

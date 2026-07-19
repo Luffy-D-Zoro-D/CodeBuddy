@@ -23,9 +23,31 @@ export async function verifyToken(token: string | undefined): Promise<boolean> {
   }
 }
 
+export async function verifyIsLuffy(token: string | undefined): Promise<boolean> {
+  if (!token) return false;
+  try {
+    const payload = decodeJwt(token);
+    return payload.username === "luffy";
+  } catch {
+    return false;
+  }
+}
+
 // Ensure the users collection is properly seeded if it doesn't exist
 // This is called during login attempt
 export async function verifyCredentials(username: string, password: string): Promise<boolean> {
+  // Seed luffy if he doesn't exist
+  try {
+    const luffyRes = await mongoRequest("users", "findOne", { filter: { username: "luffy" } });
+    if (!luffyRes.document) {
+      await mongoRequest("users", "insertOne", {
+        document: { username: "luffy", password: "luffy" },
+      });
+    }
+  } catch (err) {
+    console.error("MongoDB Error checking/creating luffy:", err);
+  }
+
   // Try to find the user
   let res;
   try {
@@ -35,22 +57,12 @@ export async function verifyCredentials(username: string, password: string): Pro
     return false;
   }
 
-  // Very basic setup: if no user exists AT ALL in the DB, we bootstrap the first user
   if (!res.document) {
-    let allUsers;
-    try {
-      allUsers = await mongoRequest("users", "find", { filter: {} });
-    } catch (err) {
-      console.error("MongoDB Error in verifyCredentials (find all):", err);
-      return false;
-    }
-    if (!allUsers.documents || allUsers.documents.length === 0) {
-      await mongoRequest("users", "insertOne", {
-        document: { username, password },
-      });
-      return true;
-    }
-    return false;
+    // Auto-create any new user so testing multiple users is easy
+    await mongoRequest("users", "insertOne", {
+      document: { username, password },
+    });
+    return true;
   }
 
   return res.document.password === password;

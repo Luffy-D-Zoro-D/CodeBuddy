@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { mongoRequest } from "./mongo.server";
-import { createSessionToken, verifyCredentials, verifyToken, changePassword } from "./auth.server";
+import { createSessionToken, verifyCredentials, verifyToken, changePassword, verifyIsLuffy } from "./auth.server";
 import { formatCodeWithGroq } from "./groq.server";
 
 // Authenticated proxy for Atlas Data API calls
@@ -51,8 +51,9 @@ export const formatWithAIFn = createServerFn({ method: "POST" })
   .validator((d: { token: string; code: string; language: string; aiNote?: string }) => d)
   .handler(async ({ data: { token, code, language, aiNote } }) => {
     const isAuthed = await verifyToken(token);
-    if (!isAuthed) {
-      throw new Error("Unauthorized");
+    const isLuffy = await verifyIsLuffy(token);
+    if (!isAuthed || !isLuffy) {
+      throw new Error("Unauthorized: Only luffy can use AI features");
     }
     const formattedCode = await formatCodeWithGroq(code, language, aiNote);
     return { formattedCode };
