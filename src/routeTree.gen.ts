@@ -17,6 +17,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as OdenLoginRouteImport } from './routes/oden.login'
 import { Route as BrowseCategoryIndexRouteImport } from './routes/browse.$category.index'
+import { Route as ApiAssetsDayIdFilenameRouteImport } from './routes/api.assets.$dayId.$filename'
 import { Route as BrowseCategoryTopicDayRouteImport } from './routes/browse.$category.$topic.$day'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,11 @@ const BrowseCategoryIndexRoute = BrowseCategoryIndexRouteImport.update({
   path: '/browse/$category/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAssetsDayIdFilenameRoute = ApiAssetsDayIdFilenameRouteImport.update({
+  id: '/api/assets/$dayId/$filename',
+  path: '/api/assets/$dayId/$filename',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrowseCategoryTopicDayRoute = BrowseCategoryTopicDayRouteImport.update({
   id: '/browse/$category/$topic/$day',
   path: '/browse/$category/$topic/$day',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oden/login': typeof OdenLoginRoute
   '/browse/$category/': typeof BrowseCategoryIndexRoute
+  '/api/assets/$dayId/$filename': typeof ApiAssetsDayIdFilenameRoute
   '/browse/$category/$topic/$day': typeof BrowseCategoryTopicDayRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oden/login': typeof OdenLoginRoute
   '/browse/$category': typeof BrowseCategoryIndexRoute
+  '/api/assets/$dayId/$filename': typeof ApiAssetsDayIdFilenameRoute
   '/browse/$category/$topic/$day': typeof BrowseCategoryTopicDayRoute
 }
 export interface FileRoutesById {
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oden/login': typeof OdenLoginRoute
   '/browse/$category/': typeof BrowseCategoryIndexRoute
+  '/api/assets/$dayId/$filename': typeof ApiAssetsDayIdFilenameRoute
   '/browse/$category/$topic/$day': typeof BrowseCategoryTopicDayRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/oden/login'
     | '/browse/$category/'
+    | '/api/assets/$dayId/$filename'
     | '/browse/$category/$topic/$day'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/oden/login'
     | '/browse/$category'
+    | '/api/assets/$dayId/$filename'
     | '/browse/$category/$topic/$day'
   id:
     | '__root__'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/oden/login'
     | '/browse/$category/'
+    | '/api/assets/$dayId/$filename'
     | '/browse/$category/$topic/$day'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   OdenLoginRoute: typeof OdenLoginRoute
   BrowseCategoryIndexRoute: typeof BrowseCategoryIndexRoute
+  ApiAssetsDayIdFilenameRoute: typeof ApiAssetsDayIdFilenameRoute
   BrowseCategoryTopicDayRoute: typeof BrowseCategoryTopicDayRoute
 }
 
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrowseCategoryIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/assets/$dayId/$filename': {
+      id: '/api/assets/$dayId/$filename'
+      path: '/api/assets/$dayId/$filename'
+      fullPath: '/api/assets/$dayId/$filename'
+      preLoaderRoute: typeof ApiAssetsDayIdFilenameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/browse/$category/$topic/$day': {
       id: '/browse/$category/$topic/$day'
       path: '/browse/$category/$topic/$day'
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   OdenLoginRoute: OdenLoginRoute,
   BrowseCategoryIndexRoute: BrowseCategoryIndexRoute,
+  ApiAssetsDayIdFilenameRoute: ApiAssetsDayIdFilenameRoute,
   BrowseCategoryTopicDayRoute: BrowseCategoryTopicDayRoute,
 }
 export const routeTree = rootRouteImport

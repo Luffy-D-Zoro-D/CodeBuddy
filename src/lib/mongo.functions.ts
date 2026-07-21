@@ -26,7 +26,8 @@ export const runMongoOp = createServerFn({ method: "POST" })
     }
 
     // Only 'find' and 'findOne' are public
-    if (action !== "find" && action !== "findOne") {
+    const safeAction = String(action || "").trim();
+    if (safeAction !== "find" && safeAction !== "findOne") {
       const isAuthed = await verifyToken(token);
       if (!isAuthed) {
         throw new Error("Unauthorized: You must be logged in to modify data");

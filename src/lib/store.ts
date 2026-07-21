@@ -43,6 +43,15 @@ export type CodeFile = {
   aiNote?: string;
 };
 
+export type Asset = {
+  id: string;
+  dayId: string;
+  filename: string;
+  mimeType: string;
+  data: string; // Base64 encoded data
+  createdAt: string;
+};
+
 type SessionState = {
   token: string | null;
 };
@@ -449,12 +458,37 @@ export const api = {
   },
   async deleteFile(id: string): Promise<void> {
     await runMongoOp({
-      data: {
-        token: getToken(),
-        collection: "files",
-        action: "deleteOne",
-        body: { filter: { id } },
-      },
+      data: { token: getToken(), collection: "files", action: "deleteOne", body: { filter: { id } } },
+    });
+  },
+
+  // assets
+  async listAssets(dayId: string): Promise<Asset[]> {
+    const res = (await runMongoOp({
+      data: { token: getToken(), collection: "assets", action: "find", body: { filter: { dayId }, projection: { data: 0 } } }, // exclude data for listing to save bandwidth
+    })) as any;
+    return (res.documents || []) as Asset[];
+  },
+  async getAsset(id: string): Promise<Asset | undefined> {
+    const res = (await runMongoOp({
+      data: { token: getToken(), collection: "assets", action: "findOne", body: { filter: { id } } },
+    })) as any;
+    return res.document as Asset | undefined;
+  },
+  async createAsset(input: Omit<Asset, "id" | "createdAt">): Promise<Asset> {
+    const a: Asset = {
+      ...input,
+      id: uid("a"),
+      createdAt: now(),
+    };
+    await runMongoOp({
+      data: { token: getToken(), collection: "assets", action: "insertOne", body: { document: a } },
+    });
+    return a;
+  },
+  async deleteAsset(id: string): Promise<void> {
+    await runMongoOp({
+      data: { token: getToken(), collection: "assets", action: "deleteOne", body: { filter: { id } } },
     });
   },
 

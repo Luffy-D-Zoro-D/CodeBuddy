@@ -33,7 +33,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { api, useStore, type CodeFile, type Topic, type Day } from "@/lib/store";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { api, useStore, type CodeFile, type Topic, type Day, type Asset } from "@/lib/store";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 
@@ -69,10 +70,13 @@ function Dashboard() {
     queryFn: () => api.listCategories(),
   });
 
-  const [selectedCat, setSelectedCat] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("dash_cat") || "";
-  });
+  const [selectedCat, setSelectedCat] = useState<string>("");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dash_cat");
+      if (saved && !selectedCat) setSelectedCat(saved);
+    }
+  }, []);
   useEffect(() => {
     if (selectedCat) {
       localStorage.setItem("dash_cat", selectedCat);
@@ -92,10 +96,13 @@ function Dashboard() {
     enabled: !!selectedCat,
   });
 
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("dash_topic");
-  });
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dash_topic");
+      if (saved && !selectedTopicId) setSelectedTopicId(saved);
+    }
+  }, []);
   useEffect(() => {
     if (selectedTopicId) localStorage.setItem("dash_topic", selectedTopicId);
 
@@ -115,10 +122,13 @@ function Dashboard() {
     enabled: !!selectedTopicId,
   });
 
-  const [selectedDayId, setSelectedDayId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("dash_day");
-  });
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dash_day");
+      if (saved && !selectedDayId) setSelectedDayId(saved);
+    }
+  }, []);
   useEffect(() => {
     if (selectedDayId) localStorage.setItem("dash_day", selectedDayId);
 
@@ -135,6 +145,15 @@ function Dashboard() {
   } = useQuery({
     queryKey: ["files", selectedDayId],
     queryFn: () => api.listFiles(selectedDayId!),
+    enabled: !!selectedDayId,
+  });
+
+  const {
+    data: assets = [],
+    refetch: refetchAssets,
+  } = useQuery({
+    queryKey: ["assets", selectedDayId],
+    queryFn: () => api.listAssets(selectedDayId!),
     enabled: !!selectedDayId,
   });
 
@@ -370,6 +389,33 @@ function Dashboard() {
                         />
                       </div>
                     )}
+
+                    <div className="mt-6 space-y-2 border-t border-border pt-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                          Attached Assets (Images / Zips)
+                        </Label>
+                        <UploadAssetDialog dayId={selectedDay.id} onCreated={refetchAssets} />
+                      </div>
+                      {assets.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No assets uploaded.</p>
+                      ) : (
+                        <div className="flex flex-col gap-2 mt-2">
+                          {assets.map(a => (
+                            <div key={a.id} className="flex items-center justify-between rounded-md border border-border bg-secondary/20 px-3 py-2 text-sm">
+                              <span className="font-mono text-xs">{a.filename}</span>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
+                                  navigator.clipboard.writeText(`/api/assets/${selectedDay.id}/${a.filename}`);
+                                  toast.success("URL copied!");
+                                }}>Copy URL</Button>
+                                <DeleteAsset asset={a} onDeleted={refetchAssets} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </section>
@@ -767,11 +813,76 @@ function DeleteDay({ day, onDeleted }: { day: Day; onDeleted: () => void }) {
   );
 }
 
+function getLanguageFromFilename(filename: string): CodeFile["language"] {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".html")) return "html";
+  if (lower.endsWith(".css")) return "css";
+  if (lower.endsWith(".js") || lower.endsWith(".jsx") || lower.endsWith(".ts") || lower.endsWith(".tsx")) return "javascript";
+  return "text";
+}
+
 function NewFileDialog({ dayId, onCreated }: { dayId: string; onCreated: (f: CodeFile) => void }) {
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState("index.html");
   const [language, setLanguage] = useState<CodeFile["language"]>("html");
   const [content, setContent] = useState("");
+
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleManualAdd = async () => {
+    const f = await api.createFile({
+      dayId,
+      displayName,
+      filename: displayName,
+      language,
+      content,
+    });
+    onCreated(f);
+    setOpen(false);
+    setContent("");
+    toast.success("File added");
+  };
+
+  const handleUpload = async () => {
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      const createdFiles = await Promise.all(
+        files.map((file) => {
+          return new Promise<CodeFile>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              try {
+                const text = e.target?.result as string;
+                const f = await api.createFile({
+                  dayId,
+                  displayName: file.name,
+                  filename: file.name,
+                  language: getLanguageFromFilename(file.name),
+                  content: text,
+                });
+                resolve(f);
+              } catch (err) {
+                reject(err);
+              }
+            };
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+        })
+      );
+      if (createdFiles.length > 0) onCreated(createdFiles[0]);
+      setOpen(false);
+      setFiles([]);
+      toast.success(`${files.length} file(s) added`);
+    } catch (err) {
+      toast.error("Failed to upload files");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -781,64 +892,80 @@ function NewFileDialog({ dayId, onCreated }: { dayId: string; onCreated: (f: Cod
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add file</DialogTitle>
+          <DialogTitle>Add file(s)</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>File name</Label>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="font-mono"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Language</Label>
-            <Select value={language} onValueChange={(v) => setLanguage(v as CodeFile["language"])}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="html">HTML</SelectItem>
-                <SelectItem value="css">CSS</SelectItem>
-                <SelectItem value="javascript">JavaScript</SelectItem>
-                <SelectItem value="text">Text</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Content</Label>
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={10}
-            className="font-mono text-xs"
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!displayName.trim()}
-            onClick={async () => {
-              const f = await api.createFile({
-                dayId,
-                displayName,
-                filename: displayName,
-                language,
-                content,
-              });
-              onCreated(f);
-              setOpen(false);
-              setContent("");
-              toast.success("File added");
-            }}
-          >
-            Add
-          </Button>
-        </DialogFooter>
+        <Tabs defaultValue="upload" className="w-full">
+          <TabsList className="mb-4 grid w-full grid-cols-2">
+            <TabsTrigger value="upload">Upload Files</TabsTrigger>
+            <TabsTrigger value="manual">Create Manually</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="upload" className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select HTML/CSS/JS files</Label>
+              <Input 
+                type="file" 
+                multiple 
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []))} 
+              />
+              <p className="text-xs text-muted-foreground">
+                Files will be read as text and added to the editor.
+              </p>
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button disabled={files.length === 0 || uploading} onClick={handleUpload}>
+                {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Upload & Add"}
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="manual" className="space-y-4 mt-0">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>File name</Label>
+                <Input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Language</Label>
+                <Select value={language} onValueChange={(v) => setLanguage(v as CodeFile["language"])}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="html">HTML</SelectItem>
+                    <SelectItem value="css">CSS</SelectItem>
+                    <SelectItem value="javascript">JavaScript</SelectItem>
+                    <SelectItem value="text">Text</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Content</Label>
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={10}
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!displayName.trim()}
+                onClick={handleManualAdd}
+              >
+                Add File
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
@@ -872,6 +999,104 @@ function DeleteFile({ file, onDeleted }: { file: CodeFile; onDeleted: () => void
           >
             Delete
           </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function UploadAssetDialog({ dayId, onCreated }: { dayId: string; onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async () => {
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      await Promise.all(
+        files.map((file) => {
+          return new Promise<void>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              try {
+                const result = e.target?.result as string;
+                await api.createAsset({
+                  dayId,
+                  filename: file.name,
+                  mimeType: file.type || "application/octet-stream",
+                  data: result,
+                });
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+      onCreated();
+      setOpen(false);
+      setFiles([]);
+      toast.success(`${files.length} asset(s) uploaded`);
+    } catch (err) {
+      toast.error("Upload failed for one or more files");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs">
+          <Plus className="h-3.5 w-3.5" /> Upload Asset
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Upload Asset(s)</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input 
+            type="file" 
+            multiple 
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))} 
+          />
+          <p className="text-xs text-muted-foreground">Max size: ~15MB (MongoDB limit)</p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button disabled={files.length === 0 || uploading} onClick={handleUpload}>
+            {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Upload"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteAsset({ asset, onDeleted }: { asset: Asset; onDeleted: () => void }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {asset.filename}?</AlertDialogTitle>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={async () => {
+            await api.deleteAsset(asset.id);
+            onDeleted();
+            toast.success("Asset deleted");
+          }}>Delete</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

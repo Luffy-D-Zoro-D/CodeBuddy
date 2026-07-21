@@ -152,3 +152,29 @@ After this single quick interaction, our database now holds a neatly connected t
     - **File 2 Object** (`style.css`, inside `files` collection, linked by `dayId`)
 
 Because MongoDB is so fast with JSON objects, this entire chain reaction of reading, writing, and updating takes less than a fraction of a second!
+
+---
+
+## How Images and Zip Files are Stored (Assets)
+
+CodeBuddy also supports uploading binary files like Images (`.png`, `.jpg`) and Archives (`.zip`). Instead of needing a separate file storage service (like AWS S3), we store these directly inside MongoDB!
+
+### 1. Converting to Base64
+When the teacher uploads a file in the dashboard, the browser converts the physical file into a long string of text called a **Base64 String**. 
+For example, a tiny image might look like this in Base64: `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAE...`
+
+### 2. Saving as a Document
+Once the file is converted into a string, we simply save it as a standard JSON document in a new MongoDB collection called `assets`. 
+
+```javascript
+const asset = {
+  id: "asset-123",
+  dayId: "d-abc", // Links this asset to a specific Day
+  filename: "my-image.png",
+  mimeType: "image/png",
+  data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAE..." // The actual file content!
+}
+```
+
+### 3. Serving the Asset
+When a student visits the site, or a teacher uses `<img src="/api/assets/d-abc/my-image.png">`, the backend server receives the request. It fetches the document from MongoDB, decodes the long Base64 string back into raw binary bytes, and sends it directly to the browser as a proper image or zip download!
