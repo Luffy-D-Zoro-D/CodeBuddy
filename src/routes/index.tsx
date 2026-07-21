@@ -135,7 +135,7 @@ function Index() {
                         </p>
                         <p className="truncate text-sm text-muted-foreground">{dayDisplay}</p>
                       </div>
-                      <span className="hidden text-xs text-muted-foreground sm:inline">
+                      <span className="hidden text-xs text-muted-foreground sm:inline" suppressHydrationWarning>
                         {new Date(d.createdAt).toLocaleDateString()}
                       </span>
                     </Link>

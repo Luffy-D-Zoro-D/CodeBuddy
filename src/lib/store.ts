@@ -56,8 +56,15 @@ export type Feedback = {
   id: string;
   type: "bug" | "suggestion" | "other";
   message: string;
+  deviceId: string;
   status: "new" | "resolved";
   createdAt: string;
+};
+
+export type StudentIdentity = {
+  deviceId: string;
+  name: string;
+  updatedAt: string;
 };
 
 type SessionState = {
@@ -69,9 +76,21 @@ export type Settings = Record<string, any>;
 const SESSION_KEY = "codebuddy_session_v1";
 const SETTINGS_KEY = "codebuddy_settings_v1";
 
+const DEVICE_KEY = "codebuddy_device_id_v1";
+
 const defaultSettings: Settings = {};
 
 const now = () => new Date().toISOString();
+
+export function getDeviceId(): string {
+  if (typeof window === "undefined") return "server-side";
+  let id = localStorage.getItem(DEVICE_KEY);
+  if (!id) {
+    id = uid("dev");
+    localStorage.setItem(DEVICE_KEY, id);
+  }
+  return id;
+}
 
 // Hardcoded categories (could be moved to DB later, but perfectly fine locally for now)
 const CATEGORIES: Category[] = [
@@ -554,6 +573,7 @@ export const api = {
       id: uid("fb"),
       type,
       message,
+      deviceId: getDeviceId(),
       status: "new",
       createdAt: now(),
     };
@@ -577,6 +597,39 @@ export const api = {
     await runMongoOp({
       data: { token: getToken(), collection: "feedback", action: "deleteOne", body: { filter: { id } } },
     });
+  },
+
+  // global settings and identities
+  async getGlobalSettings(): Promise<{ requireStudentNames: boolean }> {
+    const res = (await runMongoOp({
+      data: { collection: "global_settings", action: "findOne", body: { filter: { id: "app_settings" } } },
+    })) as any;
+    return res.document || { requireStudentNames: false };
+  },
+  async updateGlobalSettings(requireStudentNames: boolean): Promise<void> {
+    await runMongoOp({
+      data: { 
+        token: getToken(), 
+        collection: "global_settings", 
+        action: "updateOne", 
+        body: { filter: { id: "app_settings" }, update: { $set: { requireStudentNames } }, upsert: true } 
+      },
+    });
+  },
+  async submitStudentIdentity(name: string, deviceId: string): Promise<void> {
+    await runMongoOp({
+      data: { 
+        collection: "student_identities", 
+        action: "updateOne", 
+        body: { filter: { deviceId }, update: { $set: { name, updatedAt: now() } }, upsert: true } 
+      },
+    });
+  },
+  async listStudentIdentities(): Promise<StudentIdentity[]> {
+    const res = (await runMongoOp({
+      data: { token: getToken(), collection: "student_identities", action: "find" },
+    })) as any;
+    return (res.documents || []) as StudentIdentity[];
   },
 
   // search across topics + days

@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Search, LayoutDashboard, LogOut, FolderTree, Settings, MessageSquare, Flag, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,8 @@ export function SiteHeader() {
     setAuthed(api.isAuthed());
   }, [storeVer]);
 
+
+
   const handleFeedbackSubmit = async () => {
     if (!feedbackMsg.trim()) return;
     setIsSubmitting(true);
@@ -45,6 +48,8 @@ export function SiteHeader() {
       setIsSubmitting(false);
     }
   };
+
+
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">

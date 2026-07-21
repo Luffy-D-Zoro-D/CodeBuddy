@@ -126,7 +126,7 @@ function CategoryPage() {
                                     — {d.title}
                                   </span>
                                 )}
-                                <span className="ml-auto text-xs text-muted-foreground">
+                                <span className="ml-auto text-xs text-muted-foreground" suppressHydrationWarning>
                                   {new Date(d.createdAt).toLocaleDateString()}
                                 </span>
                               </Link>
