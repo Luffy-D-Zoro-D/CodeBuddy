@@ -30,8 +30,9 @@ export const runMongoOp = createServerFn({ method: "POST" })
     if (safeAction !== "find" && safeAction !== "findOne") {
       const isPublicFeedbackInsert = collection === "feedback" && safeAction === "insertOne";
       const isPublicIdentityUpsert = collection === "student_identities" && safeAction === "updateOne";
+      const isPublicDeviceRegistry = collection === "device_registry" && safeAction === "updateOne";
       
-      if (!isPublicFeedbackInsert && !isPublicIdentityUpsert) {
+      if (!isPublicFeedbackInsert && !isPublicIdentityUpsert && !isPublicDeviceRegistry) {
         const isAuthed = await verifyToken(token);
         if (!isAuthed) {
           throw new Error("Unauthorized: You must be logged in to modify data");

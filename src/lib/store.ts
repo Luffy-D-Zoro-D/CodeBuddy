@@ -59,6 +59,13 @@ export type Feedback = {
   deviceId: string;
   status: "new" | "resolved";
   createdAt: string;
+  userAgent?: string;
+};
+
+export type DeviceRegistry = {
+  deviceId: string;
+  userAgent: string;
+  createdAt: string;
 };
 
 export type StudentIdentity = {
@@ -569,6 +576,7 @@ export const api = {
 
   // feedback
   async submitFeedback(type: "bug" | "suggestion" | "other", message: string): Promise<void> {
+    const userAgent = typeof window !== "undefined" ? navigator.userAgent : "Unknown";
     const f: Feedback = {
       id: uid("fb"),
       type,
@@ -576,6 +584,7 @@ export const api = {
       deviceId: getDeviceId(),
       status: "new",
       createdAt: now(),
+      userAgent,
     };
     await runMongoOp({
       data: { token: getToken(), collection: "feedback", action: "insertOne", body: { document: f } },
@@ -600,19 +609,41 @@ export const api = {
   },
 
   // global settings and identities
-  async getGlobalSettings(): Promise<{ requireStudentNames: boolean }> {
+  async getGlobalSettings(): Promise<{ requireStudentNames: boolean, lockdownMode: boolean, bannedDevices: string[] }> {
     const res = (await runMongoOp({
       data: { collection: "global_settings", action: "findOne", body: { filter: { id: "app_settings" } } },
     })) as any;
-    return res.document || { requireStudentNames: false };
+    return res.document || { requireStudentNames: false, lockdownMode: false, bannedDevices: [] };
   },
-  async updateGlobalSettings(requireStudentNames: boolean): Promise<void> {
+  async updateGlobalSettings(patch: Partial<{ requireStudentNames: boolean, lockdownMode: boolean, bannedDevices: string[] }>): Promise<void> {
     await runMongoOp({
       data: { 
         token: getToken(), 
         collection: "global_settings", 
         action: "updateOne", 
-        body: { filter: { id: "app_settings" }, update: { $set: { requireStudentNames } }, upsert: true } 
+        body: { filter: { id: "app_settings" }, update: { $set: patch }, upsert: true } 
+      },
+    });
+  },
+  async banDevice(deviceId: string): Promise<void> {
+    if (!deviceId) return;
+    await runMongoOp({
+      data: { 
+        token: getToken(), 
+        collection: "global_settings", 
+        action: "updateOne", 
+        body: { filter: { id: "app_settings" }, update: { $addToSet: { bannedDevices: deviceId } }, upsert: true } 
+      },
+    });
+  },
+  async unbanDevice(deviceId: string): Promise<void> {
+    if (!deviceId) return;
+    await runMongoOp({
+      data: { 
+        token: getToken(), 
+        collection: "global_settings", 
+        action: "updateOne", 
+        body: { filter: { id: "app_settings" }, update: { $pull: { bannedDevices: deviceId } } } 
       },
     });
   },
@@ -630,6 +661,33 @@ export const api = {
       data: { token: getToken(), collection: "student_identities", action: "find" },
     })) as any;
     return (res.documents || []) as StudentIdentity[];
+  },
+  async checkIfRegistered(deviceId: string): Promise<boolean> {
+    if (!deviceId) return false;
+    const res = (await runMongoOp({
+      data: { collection: "student_identities", action: "findOne", body: { filter: { deviceId } } },
+    })) as any;
+    return !!res.document;
+  },
+  async registerDeviceSilent(deviceId: string, userAgent: string): Promise<void> {
+    if (!deviceId) return;
+    await runMongoOp({
+      data: {
+        collection: "device_registry",
+        action: "updateOne",
+        body: { 
+          filter: { deviceId }, 
+          update: { $setOnInsert: { deviceId, userAgent, createdAt: now() } }, 
+          upsert: true 
+        }
+      }
+    });
+  },
+  async listDeviceRegistry(): Promise<DeviceRegistry[]> {
+    const res = (await runMongoOp({
+      data: { token: getToken(), collection: "device_registry", action: "find" }
+    })) as any;
+    return (res.documents || []) as DeviceRegistry[];
   },
 
   // search across topics + days
