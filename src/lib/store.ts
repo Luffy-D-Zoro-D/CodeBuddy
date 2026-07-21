@@ -52,6 +52,14 @@ export type Asset = {
   createdAt: string;
 };
 
+export type Feedback = {
+  id: string;
+  type: "bug" | "suggestion" | "other";
+  message: string;
+  status: "new" | "resolved";
+  createdAt: string;
+};
+
 type SessionState = {
   token: string | null;
 };
@@ -537,6 +545,37 @@ export const api = {
   async deleteAsset(id: string): Promise<void> {
     await runMongoOp({
       data: { token: getToken(), collection: "assets", action: "deleteOne", body: { filter: { id } } },
+    });
+  },
+
+  // feedback
+  async submitFeedback(type: "bug" | "suggestion" | "other", message: string): Promise<void> {
+    const f: Feedback = {
+      id: uid("fb"),
+      type,
+      message,
+      status: "new",
+      createdAt: now(),
+    };
+    await runMongoOp({
+      data: { token: getToken(), collection: "feedback", action: "insertOne", body: { document: f } },
+    });
+  },
+  async listFeedback(): Promise<Feedback[]> {
+    const res = (await runMongoOp({
+      data: { token: getToken(), collection: "feedback", action: "find" },
+    })) as any;
+    const docs = (res.documents || []) as Feedback[];
+    return docs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async resolveFeedback(id: string): Promise<void> {
+    await runMongoOp({
+      data: { token: getToken(), collection: "feedback", action: "updateOne", body: { filter: { id }, update: { $set: { status: "resolved" } } } },
+    });
+  },
+  async deleteFeedback(id: string): Promise<void> {
+    await runMongoOp({
+      data: { token: getToken(), collection: "feedback", action: "deleteOne", body: { filter: { id } } },
     });
   },
 

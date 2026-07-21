@@ -25,12 +25,14 @@ export const runMongoOp = createServerFn({ method: "POST" })
       throw new Error("Direct access to the users collection is strictly prohibited");
     }
 
-    // Only 'find' and 'findOne' are public
+    // Only 'find' and 'findOne' are public, EXCEPT for inserting feedback
     const safeAction = String(action || "").trim();
     if (safeAction !== "find" && safeAction !== "findOne") {
-      const isAuthed = await verifyToken(token);
-      if (!isAuthed) {
-        throw new Error("Unauthorized: You must be logged in to modify data");
+      if (!(collection === "feedback" && safeAction === "insertOne")) {
+        const isAuthed = await verifyToken(token);
+        if (!isAuthed) {
+          throw new Error("Unauthorized: You must be logged in to modify data");
+        }
       }
     }
     const result = await mongoRequest(collection, action, body);
