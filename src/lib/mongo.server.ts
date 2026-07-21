@@ -46,7 +46,8 @@ export async function mongoRequest(
       return { insertedId: result.insertedId.toString() };
     }
     case "updateOne": {
-      const result = await collection.updateOne(body.filter || {}, body.update || {});
+      const options = body.upsert ? { upsert: true } : {};
+      const result = await collection.updateOne(body.filter || {}, body.update || {}, options);
       return { matchedCount: result.matchedCount, modifiedCount: result.modifiedCount };
     }
     case "deleteOne": {

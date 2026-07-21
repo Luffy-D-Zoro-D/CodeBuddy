@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Save, Sparkles, Trash2, FileCode2, CalendarDays, Loader2 } from "lucide-react";
+import { Plus, Save, Sparkles, Trash2, FileCode2, CalendarDays, Loader2, Lightbulb } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CodeViewer } from "@/components/CodeViewer";
 import { Button } from "@/components/ui/button";
@@ -77,33 +77,58 @@ function Dashboard() {
 
   const [selectedCat, setSelectedCat] = useState<string>("");
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+
+  const { data: prefs, isLoading: isLoadingPrefs } = useQuery({
+    queryKey: ["preferences"],
+    queryFn: () => api.getUserPreferences(),
+  });
+
+  const [hasLoadedPrefs, setHasLoadedPrefs] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedCat = localStorage.getItem("dash_cat");
-      const savedTopic = localStorage.getItem("dash_topic");
-      if (savedCat) setSelectedCat(savedCat);
-      if (savedTopic) setSelectedTopicId(savedTopic);
+    if (!isLoadingPrefs && !hasLoadedPrefs) {
+      if (prefs) {
+        if (prefs.lastCatId) setSelectedCat(prefs.lastCatId);
+        if (prefs.lastTopicId) setSelectedTopicId(prefs.lastTopicId);
+        if (prefs.lastDayId) setSelectedDayId(prefs.lastDayId);
+        if (prefs.lastFileId) setSelectedFileId(prefs.lastFileId);
+      }
+      setHasLoadedPrefs(true);
     }
-  }, []);
+  }, [isLoadingPrefs, prefs, hasLoadedPrefs]);
 
   useEffect(() => {
-    if (selectedCat) localStorage.setItem("dash_cat", selectedCat);
-    if (selectedTopicId) localStorage.setItem("dash_topic", selectedTopicId);
-  }, [selectedCat, selectedTopicId]);
+    if (hasLoadedPrefs) {
+      // Only sync back if we have loaded the initial state
+      if (selectedCat || selectedTopicId || selectedDayId || selectedFileId) {
+        api.updateUserPreferences({
+          lastCatId: selectedCat,
+          lastTopicId: selectedTopicId || undefined,
+          lastDayId: selectedDayId || undefined,
+          lastFileId: selectedFileId || undefined,
+        });
+      }
+    }
+  }, [selectedCat, selectedTopicId, selectedDayId, selectedFileId, hasLoadedPrefs]);
 
   useEffect(() => {
-    if (!selectedCat && categories.length > 0 && !isLoadingGlobalTopics) {
+    if (hasLoadedPrefs && !selectedCat && categories.length > 0 && !isLoadingGlobalTopics) {
       if (globalTopics.length > 0) {
-        const sorted = [...globalTopics].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        const sorted = [...globalTopics].sort((a, b) => {
+          const timeA = a.updatedAt || a.createdAt || "";
+          const timeB = b.updatedAt || b.createdAt || "";
+          return timeB.localeCompare(timeA);
+        });
         const latest = sorted[0];
         setSelectedCat(latest.categoryId);
-        if (!selectedTopicId) setSelectedTopicId(latest.id);
+        setSelectedTopicId(latest.id);
       } else {
         setSelectedCat(categories[0].id);
       }
     }
-  }, [categories, selectedCat, globalTopics, isLoadingGlobalTopics, selectedTopicId]);
+  }, [categories, globalTopics, isLoadingGlobalTopics, selectedCat, hasLoadedPrefs]);
 
   const {
     data: topics = [],
@@ -132,20 +157,11 @@ function Dashboard() {
     enabled: !!selectedTopicId,
   });
 
-  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("dash_day");
-      if (saved && !selectedDayId) setSelectedDayId(saved);
-    }
-  }, []);
-  useEffect(() => {
-    if (selectedDayId) localStorage.setItem("dash_day", selectedDayId);
-
-    if (days.length > 0 && !days.find((d) => d.id === selectedDayId)) {
+    if (days.length > 0 && selectedTopicId && !days.find((d) => d.id === selectedDayId)) {
       setSelectedDayId(days[0]?.id ?? null);
     }
-  }, [days, selectedDayId]);
+  }, [days, selectedDayId, selectedTopicId]);
   const selectedDay = days.find((d) => d.id === selectedDayId) ?? null;
 
   const {
@@ -167,12 +183,11 @@ function Dashboard() {
     enabled: !!selectedDayId,
   });
 
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   useEffect(() => {
-    if (!files.find((f) => f.id === selectedFileId)) {
+    if (files.length > 0 && selectedDayId && !files.find((f) => f.id === selectedFileId)) {
       setSelectedFileId(files[0]?.id ?? null);
     }
-  }, [files, selectedFileId]);
+  }, [files, selectedFileId, selectedDayId]);
   const currentFile = files.find((f) => f.id === selectedFileId) ?? null;
 
   const [draft, setDraft] = useState("");
@@ -204,10 +219,11 @@ function Dashboard() {
       <SiteHeader />
       <main className="mx-auto grid w-full flex-1 max-w-[1600px] grid-cols-1 gap-6 overflow-hidden px-6 py-6 lg:grid-cols-[280px_1fr]">
         {/* Sidebar */}
-        <aside className="space-y-4 overflow-y-auto pb-4 pr-2">
+        <aside className="flex flex-col gap-4 overflow-hidden pb-2 pr-2">
           {selectedCat && (
             <QuickUploadDialog
               categoryId={selectedCat}
+              categoryName={categories.find(c => c.id === selectedCat)?.name || ""}
               topics={topics}
               currentTopicId={selectedTopicId}
               onSuccess={async (tId, dId) => {
@@ -219,24 +235,26 @@ function Dashboard() {
             />
           )}
 
-          <div className="rounded-xl border border-border bg-card p-4">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+          <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card p-3 overflow-hidden">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground shrink-0">
               Subject
             </Label>
-            <Select value={selectedCat} onValueChange={setSelectedCat}>
-              <SelectTrigger className="mt-2 w-full">
-                <SelectValue placeholder="Select a subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="shrink-0 mt-2">
+              <Select value={selectedCat} onValueChange={setSelectedCat}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="mt-5 flex items-center justify-between">
+            <div className="mt-3 flex shrink-0 items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Topics (newest first)
               </span>
@@ -248,7 +266,7 @@ function Dashboard() {
                 }}
               />
             </div>
-            <ul className="mt-2 space-y-0.5">
+            <ul className="mt-2 flex flex-1 flex-col space-y-0.5 overflow-y-auto pr-1 min-h-0">
               {isLoadingTopics && (
                 <li className="py-2 text-center">
                   <Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" />
@@ -275,8 +293,8 @@ function Dashboard() {
           </div>
 
           {selectedTopic && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between">
+            <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card p-3 overflow-hidden">
+              <div className="flex shrink-0 items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Days
                 </span>
@@ -288,7 +306,7 @@ function Dashboard() {
                   }}
                 />
               </div>
-              <ul className="mt-2 space-y-0.5">
+              <ul className="mt-2 flex flex-1 flex-col space-y-0.5 overflow-y-auto pr-1 min-h-0">
                 {isLoadingDays && (
                   <li className="py-2 text-center">
                     <Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" />
@@ -1129,11 +1147,13 @@ function DeleteAsset({ asset, onDeleted }: { asset: Asset; onDeleted: () => void
 
 function QuickUploadDialog({
   categoryId,
+  categoryName,
   topics,
   currentTopicId,
   onSuccess,
 }: {
   categoryId: string;
+  categoryName: string;
   topics: Topic[];
   currentTopicId: string | null;
   onSuccess: (topicId: string, dayId: string) => void;
@@ -1145,6 +1165,8 @@ function QuickUploadDialog({
   const [dayTitle, setDayTitle] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
   useEffect(() => {
     if (open && topics.length > 0) {
@@ -1253,11 +1275,64 @@ function QuickUploadDialog({
     }
   };
 
+  const handleFilesSelected = async (newFiles: File[]) => {
+    if (newFiles.length === 0) return;
+    setFiles(newFiles);
+    setHasAnalyzed(false);
+    setAnalyzing(true);
+    
+    try {
+      // Find the first text file to use as a snippet for the AI
+      const textFile = newFiles.find(f => f.type.startsWith("text/") || f.name.endsWith(".js") || f.name.endsWith(".html") || f.name.endsWith(".css"));
+      let snippet = "(No text file found, use filename context: " + newFiles.map(f => f.name).join(", ") + ")";
+      
+      if (textFile) {
+        snippet = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve((e.target?.result as string).substring(0, 1000));
+          reader.onerror = () => resolve(snippet);
+          reader.readAsText(textFile);
+        });
+      }
+
+      const existingTopics = topics.map(t => ({ id: t.id, title: t.title }));
+      const aiResult = await api.inferTopic(categoryName, existingTopics, snippet, currentTopicId);
+      
+      if (aiResult.action === "use_existing" && aiResult.topicId) {
+        setIsNewTopic(false);
+        setSelectedTopicId(aiResult.topicId);
+      } else if (aiResult.action === "create_new" && aiResult.topicName) {
+        setIsNewTopic(true);
+        setNewTopicName(aiResult.topicName);
+      }
+      if (aiResult.dayTitle) {
+        setDayTitle(aiResult.dayTitle);
+      }
+      
+      setHasAnalyzed(true);
+      toast.success("AI Analysis Complete. Please review and upload.");
+    } catch (err) {
+      toast.error("AI couldn't infer the topic. Please fill it manually.");
+      setHasAnalyzed(true); // Let them do it manually
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setHasAnalyzed(false);
+      setFiles([]);
+      setNewTopicName("");
+      setDayTitle("");
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="w-full gap-2 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-90 shadow-lg shadow-indigo-500/25 border-0 h-12 text-sm font-bold transition-all hover:scale-[1.02]">
-          <Sparkles className="h-5 w-5 text-yellow-300" /> Quick Add Lecture
+          <i className="fa-solid fa-plus text-base"></i> Quick Add Lecture
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
@@ -1265,65 +1340,92 @@ function QuickUploadDialog({
           <DialogTitle>Quick Add Lecture</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <Tabs value={isNewTopic ? "new" : "existing"} onValueChange={(v) => setIsNewTopic(v === "new")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="existing">Existing Topic</TabsTrigger>
-              <TabsTrigger value="new">New Topic</TabsTrigger>
-            </TabsList>
-            <TabsContent value="existing" className="mt-4">
-              <div className="space-y-2">
-                <Label>Select Topic</Label>
-                <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select topic" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {topics.length === 0 && <SelectItem value="none" disabled>No topics available</SelectItem>}
-                    {topics.map(t => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </TabsContent>
-            <TabsContent value="new" className="mt-4">
-              <div className="space-y-2">
-                <Label>New Topic Name</Label>
-                <Input value={newTopicName} onChange={e => setNewTopicName(e.target.value)} placeholder="e.g. Layouts in CSS" />
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <div className="space-y-2 pt-2">
-            <Label>Day Title (Optional)</Label>
-            <Input value={dayTitle} onChange={e => setDayTitle(e.target.value)} placeholder="e.g. Login Page" />
-          </div>
-
-          <div className="space-y-3 pt-4">
-            <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Main Action: Lecture Files</Label>
-            <div className="relative border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 rounded-xl p-8 transition-colors text-center">
-              <Input 
-                type="file" 
-                multiple 
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []))} 
-                accept=".html,.css,.js,.ts,.json,image/*,.zip"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              <div className="pointer-events-none flex flex-col items-center gap-2">
-                <FileCode2 className="h-10 w-10 text-primary/70 mb-2" />
-                <span className="font-semibold text-primary text-base">Select or drop files here</span>
-                <p className="text-xs text-muted-foreground">HTML, CSS, JS, images, ZIP</p>
-                {files.length > 0 && (
-                  <div className="mt-3 text-sm font-bold text-primary-foreground bg-primary rounded-md px-3 py-1.5 shadow-sm">
-                    {files.length} file(s) ready
+          {!hasAnalyzed ? (
+            <div className="space-y-3 pt-4">
+              <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Select files to begin</Label>
+              <div className="relative border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 rounded-xl p-8 transition-colors text-center h-48 flex items-center justify-center">
+                {analyzing ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-10 w-10 text-primary animate-spin mb-2" />
+                    <span className="font-semibold text-primary text-base">AI is analyzing files...</span>
+                    <p className="text-xs text-muted-foreground">Please wait a moment</p>
                   </div>
+                ) : (
+                  <>
+                    <Input 
+                      type="file" 
+                      multiple 
+                      onChange={(e) => handleFilesSelected(Array.from(e.target.files ?? []))} 
+                      accept=".html,.css,.js,.ts,.json,image/*,.zip"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="pointer-events-none flex flex-col items-center gap-2">
+                      <FileCode2 className="h-10 w-10 text-primary/70 mb-2" />
+                      <span className="font-semibold text-primary text-base">Select or drop files here</span>
+                      <p className="text-xs text-muted-foreground">HTML, CSS, JS, images, ZIP</p>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="bg-primary/10 text-primary-foreground rounded-lg p-4 text-sm flex items-start gap-3 mb-4 border border-primary/30 shadow-sm relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
+                <div className="bg-primary/20 p-1.5 rounded-md shrink-0">
+                  <Lightbulb className="h-5 w-5 text-primary" />
+                </div>
+                <div className="relative z-10">
+                  <strong className="text-base text-primary">Our Suggestion</strong>
+                  <p className="opacity-80 mt-0.5 text-foreground">We matched these files to the best topic and title. Review and click upload.</p>
+                </div>
+              </div>
+
+              <Tabs value={isNewTopic ? "new" : "existing"} onValueChange={(v) => setIsNewTopic(v === "new")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="existing">Existing Topic</TabsTrigger>
+                  <TabsTrigger value="new">New Topic</TabsTrigger>
+                </TabsList>
+                <TabsContent value="existing" className="mt-4">
+                  <div className="space-y-2">
+                    <Label>Select Topic</Label>
+                    <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select topic" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {topics.length === 0 && <SelectItem value="none" disabled>No topics available</SelectItem>}
+                        {topics.map(t => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TabsContent>
+                <TabsContent value="new" className="mt-4">
+                  <div className="space-y-2">
+                    <Label>New Topic Name</Label>
+                    <Input value={newTopicName} onChange={e => setNewTopicName(e.target.value)} placeholder="e.g. Layouts in CSS" />
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <div className="space-y-2 pt-2">
+                <Label>Day Title</Label>
+                <Input value={dayTitle} onChange={e => setDayTitle(e.target.value)} placeholder="e.g. Login Page" />
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <Label>Lecture Files</Label>
+                <div className="flex items-center gap-2 text-sm p-3 bg-secondary rounded-md border border-border">
+                   <FileCode2 className="h-4 w-4" /> <strong>{files.length}</strong> file(s) ready to upload.
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button disabled={files.length === 0 || uploading || (isNewTopic ? !newTopicName.trim() : !selectedTopicId)} onClick={handleUpload}>
-            {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Upload Lecture"}
+          <Button disabled={!hasAnalyzed || files.length === 0 || uploading || (isNewTopic ? !newTopicName.trim() : !selectedTopicId)} onClick={handleUpload}>
+            {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Confirm & Upload"}
           </Button>
         </DialogFooter>
       </DialogContent>

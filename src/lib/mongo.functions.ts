@@ -8,7 +8,7 @@ import {
   updateProfile,
   verifyIsLuffy,
 } from "./auth.server";
-import { formatCodeWithGroq } from "./groq.server";
+import { formatCodeWithGroq, inferTopicWithGroq } from "./groq.server";
 
 // Authenticated proxy for Atlas Data API calls
 export const runMongoOp = createServerFn({ method: "POST" })
@@ -68,4 +68,16 @@ export const formatWithAIFn = createServerFn({ method: "POST" })
     }
     const formattedCode = await formatCodeWithGroq(code, language, aiNote);
     return { formattedCode };
+  });
+
+export const inferTopicFn = createServerFn({ method: "POST" })
+  .validator((d: { token: string; categoryName: string; existingTopics: { id: string; title: string }[]; fileContentsPreview: string; currentTopicId: string | null }) => d)
+  .handler(async ({ data: { token, categoryName, existingTopics, fileContentsPreview, currentTopicId } }) => {
+    const isAuthed = await verifyToken(token);
+    const isLuffy = await verifyIsLuffy(token);
+    if (!isAuthed || !isLuffy) {
+      throw new Error("Unauthorized: Only Mugiwara can use AI features");
+    }
+    const result = await inferTopicWithGroq(categoryName, existingTopics, fileContentsPreview, currentTopicId);
+    return { result };
   });

@@ -181,7 +181,7 @@ function CategoryColumn({
           No topics yet
         </p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
           {topics.map((t) => (
             <TopicNode
               key={t.id}

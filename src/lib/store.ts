@@ -3,7 +3,7 @@
 // Backed by MongoDB Atlas Data API via server functions.
 
 import { useSyncExternalStore } from "react";
-import { runMongoOp, loginFn, updateProfileFn, formatWithAIFn } from "./mongo.functions";
+import { runMongoOp, loginFn, updateProfileFn, formatWithAIFn, inferTopicFn } from "./mongo.functions";
 
 export type Category = {
   id: string;
@@ -197,6 +197,38 @@ export const api = {
       return null;
     }
   },
+  async getUserPreferences(): Promise<{ lastCatId?: string; lastTopicId?: string; lastDayId?: string; lastFileId?: string } | null> {
+    const username = this.getUsername();
+    if (!username) return null;
+    try {
+      const res = (await runMongoOp({
+        data: { token: getToken(), collection: "preferences", action: "findOne", body: { filter: { id: username } } },
+      })) as any;
+      return res.document || null;
+    } catch {
+      return null;
+    }
+  },
+  async updateUserPreferences(prefs: { lastCatId?: string; lastTopicId?: string; lastDayId?: string; lastFileId?: string }): Promise<void> {
+    const username = this.getUsername();
+    if (!username) return;
+    try {
+      await runMongoOp({
+        data: {
+          token: getToken(),
+          collection: "preferences",
+          action: "updateOne",
+          body: {
+            filter: { id: username },
+            update: { $set: prefs },
+            upsert: true,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("Failed to update preferences", e);
+    }
+  },
 
   // categories
   async listCategories(): Promise<Category[]> {
@@ -248,6 +280,22 @@ export const api = {
       data: { token: getToken(), collection: "topics", action: "insertOne", body: { document: t } },
     });
     return t;
+  },
+  async inferTopic(
+    categoryName: string,
+    existingTopics: { id: string; title: string }[],
+    fileContentsPreview: string,
+    currentTopicId: string | null
+  ) {
+    const token = getToken();
+    if (!token) throw new Error("Not logged in");
+    const res = await inferTopicFn({ data: { token, categoryName, existingTopics, fileContentsPreview, currentTopicId } });
+    return res.result as {
+      action: "use_existing" | "create_new";
+      topicId?: string;
+      topicName?: string;
+      dayTitle: string;
+    };
   },
   async updateTopic(
     id: string,
