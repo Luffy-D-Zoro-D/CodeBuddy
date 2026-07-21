@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, LayoutDashboard, LogOut, FolderTree, Settings, MessageSquare, Flag, Loader2 } from "lucide-react";
+import { Search, LayoutDashboard, LogOut, FolderTree, Settings, MessageSquare, Flag, Loader2, Code2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -54,8 +54,13 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
-        <Link to="/" className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold tracking-tight text-foreground">CodeBuddy</span>
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 text-white shadow-md shadow-primary/20 transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg">
+            <Code2 className="h-6 w-6 transition-transform duration-300 group-hover:rotate-12" strokeWidth={2.5} />
+          </div>
+          <span className="text-2xl font-black tracking-tighter text-foreground">
+            Code<span className="bg-gradient-to-br from-primary to-purple-600 bg-clip-text text-transparent">Buddy</span>
+          </span>
         </Link>
 
         <form
