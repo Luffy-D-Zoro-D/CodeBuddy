@@ -70,21 +70,40 @@ function Dashboard() {
     queryFn: () => api.listCategories(),
   });
 
+  const { data: globalTopics = [], isLoading: isLoadingGlobalTopics } = useQuery({
+    queryKey: ["globalTopics"],
+    queryFn: () => api.listTopics(),
+  });
+
   const [selectedCat, setSelectedCat] = useState<string>("");
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("dash_cat");
-      if (saved && !selectedCat) setSelectedCat(saved);
+      const savedCat = localStorage.getItem("dash_cat");
+      const savedTopic = localStorage.getItem("dash_topic");
+      if (savedCat) setSelectedCat(savedCat);
+      if (savedTopic) setSelectedTopicId(savedTopic);
     }
   }, []);
+
   useEffect(() => {
-    if (selectedCat) {
-      localStorage.setItem("dash_cat", selectedCat);
+    if (selectedCat) localStorage.setItem("dash_cat", selectedCat);
+    if (selectedTopicId) localStorage.setItem("dash_topic", selectedTopicId);
+  }, [selectedCat, selectedTopicId]);
+
+  useEffect(() => {
+    if (!selectedCat && categories.length > 0 && !isLoadingGlobalTopics) {
+      if (globalTopics.length > 0) {
+        const sorted = [...globalTopics].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        const latest = sorted[0];
+        setSelectedCat(latest.categoryId);
+        if (!selectedTopicId) setSelectedTopicId(latest.id);
+      } else {
+        setSelectedCat(categories[0].id);
+      }
     }
-    if (!selectedCat && categories[0]) {
-      setSelectedCat(categories[0].id);
-    }
-  }, [categories, selectedCat]);
+  }, [categories, selectedCat, globalTopics, isLoadingGlobalTopics, selectedTopicId]);
 
   const {
     data: topics = [],
@@ -96,20 +115,11 @@ function Dashboard() {
     enabled: !!selectedCat,
   });
 
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("dash_topic");
-      if (saved && !selectedTopicId) setSelectedTopicId(saved);
-    }
-  }, []);
-  useEffect(() => {
-    if (selectedTopicId) localStorage.setItem("dash_topic", selectedTopicId);
-
-    if (topics.length > 0 && !topics.find((t) => t.id === selectedTopicId)) {
+    if (topics.length > 0 && selectedCat && !topics.find((t) => t.id === selectedTopicId)) {
       setSelectedTopicId(topics[0]?.id ?? null);
     }
-  }, [topics, selectedTopicId]);
+  }, [topics, selectedTopicId, selectedCat]);
   const selectedTopic = topics.find((t) => t.id === selectedTopicId) ?? null;
 
   const {
@@ -195,6 +205,20 @@ function Dashboard() {
       <main className="mx-auto grid w-full flex-1 max-w-[1600px] grid-cols-1 gap-6 overflow-hidden px-6 py-6 lg:grid-cols-[280px_1fr]">
         {/* Sidebar */}
         <aside className="space-y-4 overflow-y-auto pb-4 pr-2">
+          {selectedCat && (
+            <QuickUploadDialog
+              categoryId={selectedCat}
+              topics={topics}
+              currentTopicId={selectedTopicId}
+              onSuccess={async (tId, dId) => {
+                await refetchTopics();
+                setSelectedTopicId(tId);
+                await refetchDays();
+                setSelectedDayId(dId);
+              }}
+            />
+          )}
+
           <div className="rounded-xl border border-border bg-card p-4">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Subject
@@ -218,9 +242,9 @@ function Dashboard() {
               </span>
               <NewTopicDialog
                 categoryId={selectedCat}
-                onCreated={(t) => {
+                onCreated={async (t) => {
+                  await refetchTopics();
                   setSelectedTopicId(t.id);
-                  refetchTopics();
                 }}
               />
             </div>
@@ -258,9 +282,9 @@ function Dashboard() {
                 </span>
                 <NewDayDialog
                   topic={selectedTopic}
-                  onCreated={(d) => {
+                  onCreated={async (d) => {
+                    await refetchDays();
                     setSelectedDayId(d.id);
-                    refetchDays();
                   }}
                 />
               </div>
@@ -1100,5 +1124,209 @@ function DeleteAsset({ asset, onDeleted }: { asset: Asset; onDeleted: () => void
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+function QuickUploadDialog({
+  categoryId,
+  topics,
+  currentTopicId,
+  onSuccess,
+}: {
+  categoryId: string;
+  topics: Topic[];
+  currentTopicId: string | null;
+  onSuccess: (topicId: string, dayId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [isNewTopic, setIsNewTopic] = useState(false);
+  const [selectedTopicId, setSelectedTopicId] = useState<string>("");
+  const [newTopicName, setNewTopicName] = useState("");
+  const [dayTitle, setDayTitle] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (open && topics.length > 0) {
+      if (currentTopicId && topics.some(t => t.id === currentTopicId)) {
+        setSelectedTopicId(currentTopicId);
+      } else if (!selectedTopicId) {
+        setSelectedTopicId(topics[0].id);
+      }
+    }
+  }, [open, topics, currentTopicId]);
+
+  const handleUpload = async () => {
+    if (files.length === 0) return;
+    if (!isNewTopic && !selectedTopicId) return;
+    if (isNewTopic && !newTopicName.trim()) return;
+
+    setUploading(true);
+    try {
+      let topicId = selectedTopicId;
+      
+      if (isNewTopic) {
+        const t = await api.createTopic({
+          categoryId,
+          title: newTopicName.trim(),
+        });
+        topicId = t.id;
+      }
+
+      const d = await api.createDay({
+        topicId,
+        title: dayTitle.trim() || undefined,
+      });
+
+      // upload files
+      await Promise.all(
+        files.map((file) => {
+          return new Promise<void>((resolve, reject) => {
+            const isText = file.type.startsWith("text/") || file.name.endsWith(".js") || file.name.endsWith(".json");
+            const isImage = file.type.startsWith("image/");
+            const isZip = file.name.endsWith(".zip");
+
+            if (isText) {
+              const reader = new FileReader();
+              reader.onload = async (e) => {
+                try {
+                  const content = e.target?.result as string;
+                  let language: CodeFile["language"] = "text";
+                  if (file.name.endsWith(".html")) language = "html";
+                  else if (file.name.endsWith(".css")) language = "css";
+                  else if (file.name.endsWith(".js") || file.name.endsWith(".ts")) language = "javascript";
+                  
+                  await api.createFile({
+                    dayId: d.id,
+                    filename: file.name,
+                    displayName: file.name,
+                    language,
+                    content,
+                  });
+                  resolve();
+                } catch (err) {
+                  reject(err);
+                }
+              };
+              reader.onerror = reject;
+              reader.readAsText(file);
+            } else if (isImage || isZip) {
+              const reader = new FileReader();
+              reader.onload = async (e) => {
+                try {
+                  const result = e.target?.result as string;
+                  await api.createAsset({
+                    dayId: d.id,
+                    filename: file.name,
+                    mimeType: file.type || "application/octet-stream",
+                    data: result,
+                  });
+                  resolve();
+                } catch (err) {
+                  reject(err);
+                }
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            } else {
+               // Ignore unsupported files
+               resolve();
+            }
+          });
+        })
+      );
+      
+      onSuccess(topicId, d.id);
+      setOpen(false);
+      
+      // reset
+      setNewTopicName("");
+      setDayTitle("");
+      setFiles([]);
+      setIsNewTopic(false);
+      
+      toast.success("Lecture uploaded successfully!");
+    } catch (err) {
+      toast.error("Failed to upload lecture");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="w-full gap-2 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-90 shadow-lg shadow-indigo-500/25 border-0 h-12 text-sm font-bold transition-all hover:scale-[1.02]">
+          <Sparkles className="h-5 w-5 text-yellow-300" /> Quick Add Lecture
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Quick Add Lecture</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <Tabs value={isNewTopic ? "new" : "existing"} onValueChange={(v) => setIsNewTopic(v === "new")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="existing">Existing Topic</TabsTrigger>
+              <TabsTrigger value="new">New Topic</TabsTrigger>
+            </TabsList>
+            <TabsContent value="existing" className="mt-4">
+              <div className="space-y-2">
+                <Label>Select Topic</Label>
+                <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {topics.length === 0 && <SelectItem value="none" disabled>No topics available</SelectItem>}
+                    {topics.map(t => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </TabsContent>
+            <TabsContent value="new" className="mt-4">
+              <div className="space-y-2">
+                <Label>New Topic Name</Label>
+                <Input value={newTopicName} onChange={e => setNewTopicName(e.target.value)} placeholder="e.g. Layouts in CSS" />
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="space-y-2 pt-2">
+            <Label>Day Title (Optional)</Label>
+            <Input value={dayTitle} onChange={e => setDayTitle(e.target.value)} placeholder="e.g. Login Page" />
+          </div>
+
+          <div className="space-y-3 pt-4">
+            <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Main Action: Lecture Files</Label>
+            <div className="relative border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 rounded-xl p-8 transition-colors text-center">
+              <Input 
+                type="file" 
+                multiple 
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []))} 
+                accept=".html,.css,.js,.ts,.json,image/*,.zip"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <div className="pointer-events-none flex flex-col items-center gap-2">
+                <FileCode2 className="h-10 w-10 text-primary/70 mb-2" />
+                <span className="font-semibold text-primary text-base">Select or drop files here</span>
+                <p className="text-xs text-muted-foreground">HTML, CSS, JS, images, ZIP</p>
+                {files.length > 0 && (
+                  <div className="mt-3 text-sm font-bold text-primary-foreground bg-primary rounded-md px-3 py-1.5 shadow-sm">
+                    {files.length} file(s) ready
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button disabled={files.length === 0 || uploading || (isNewTopic ? !newTopicName.trim() : !selectedTopicId)} onClick={handleUpload}>
+            {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Upload Lecture"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
