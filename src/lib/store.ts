@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Backed by MongoDB Atlas Data API via server functions.
 
+// import { generateMockData } from "./mock_data";
+import { getEnhancedFingerprint } from "./fingerprint";
 import { useSyncExternalStore } from "react";
 import { runMongoOp, loginFn, updateProfileFn, formatWithAIFn, inferTopicFn } from "./mongo.functions";
 
@@ -576,7 +578,7 @@ export const api = {
 
   // feedback
   async submitFeedback(type: "bug" | "suggestion" | "other", message: string): Promise<void> {
-    const userAgent = typeof window !== "undefined" ? navigator.userAgent : "Unknown";
+    const userAgent = await getEnhancedFingerprint();
     const f: Feedback = {
       id: uid("fb"),
       type,
@@ -617,42 +619,42 @@ export const api = {
   },
   async updateGlobalSettings(patch: Partial<{ requireStudentNames: boolean, lockdownMode: boolean, bannedDevices: string[] }>): Promise<void> {
     await runMongoOp({
-      data: { 
-        token: getToken(), 
-        collection: "global_settings", 
-        action: "updateOne", 
-        body: { filter: { id: "app_settings" }, update: { $set: patch }, upsert: true } 
+      data: {
+        token: getToken(),
+        collection: "global_settings",
+        action: "updateOne",
+        body: { filter: { id: "app_settings" }, update: { $set: patch }, upsert: true }
       },
     });
   },
   async banDevice(deviceId: string): Promise<void> {
     if (!deviceId) return;
     await runMongoOp({
-      data: { 
-        token: getToken(), 
-        collection: "global_settings", 
-        action: "updateOne", 
-        body: { filter: { id: "app_settings" }, update: { $addToSet: { bannedDevices: deviceId } }, upsert: true } 
+      data: {
+        token: getToken(),
+        collection: "global_settings",
+        action: "updateOne",
+        body: { filter: { id: "app_settings" }, update: { $addToSet: { bannedDevices: deviceId } }, upsert: true }
       },
     });
   },
   async unbanDevice(deviceId: string): Promise<void> {
     if (!deviceId) return;
     await runMongoOp({
-      data: { 
-        token: getToken(), 
-        collection: "global_settings", 
-        action: "updateOne", 
-        body: { filter: { id: "app_settings" }, update: { $pull: { bannedDevices: deviceId } } } 
+      data: {
+        token: getToken(),
+        collection: "global_settings",
+        action: "updateOne",
+        body: { filter: { id: "app_settings" }, update: { $pull: { bannedDevices: deviceId } } }
       },
     });
   },
   async submitStudentIdentity(name: string, deviceId: string): Promise<void> {
     await runMongoOp({
-      data: { 
-        collection: "student_identities", 
-        action: "updateOne", 
-        body: { filter: { deviceId }, update: { $set: { name, updatedAt: now() } }, upsert: true } 
+      data: {
+        collection: "student_identities",
+        action: "updateOne",
+        body: { filter: { deviceId }, update: { $set: { name, updatedAt: now() } }, upsert: true }
       },
     });
   },
@@ -675,10 +677,10 @@ export const api = {
       data: {
         collection: "device_registry",
         action: "updateOne",
-        body: { 
-          filter: { deviceId }, 
-          update: { $setOnInsert: { deviceId, userAgent, createdAt: now() } }, 
-          upsert: true 
+        body: {
+          filter: { deviceId },
+          update: { $setOnInsert: { deviceId, userAgent, createdAt: now() } },
+          upsert: true
         }
       }
     });

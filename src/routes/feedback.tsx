@@ -19,6 +19,13 @@ export const Route = createFileRoute("/feedback")({
 
 const parseUA = (ua?: string) => {
   if (!ua || ua === "Unknown") return "Unknown Device";
+  
+  // If it's already using our enhanced fingerprint format
+  if (ua.includes(" | ")) {
+    return ua.split(" | ")[0];
+  }
+
+  // Fallback for older data
   let browser = "Unknown Browser";
   if (ua.includes("Firefox")) browser = "Firefox";
   else if (ua.includes("Edg")) browser = "Edge";

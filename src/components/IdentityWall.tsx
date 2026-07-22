@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShieldAlert, Ban } from "lucide-react";
 import { toast } from "sonner";
+import { getEnhancedFingerprint } from "@/lib/fingerprint";
 
 export function IdentityWall({ children }: { children: ReactNode }) {
   const storeVer = useStore();
@@ -31,7 +32,9 @@ export function IdentityWall({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (deviceId && typeof window !== "undefined") {
-      api.registerDeviceSilent(deviceId, navigator.userAgent).catch(() => {});
+      getEnhancedFingerprint().then(ua => {
+        api.registerDeviceSilent(deviceId, ua).catch(() => {});
+      });
     }
   }, [deviceId]);
 
