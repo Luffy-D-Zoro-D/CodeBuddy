@@ -54,8 +54,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 text-white shadow-md shadow-primary/20 transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg">
+        <Link to="/" className="flex items-center gap-2 group shrink-0">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 text-white shadow-md shadow-primary/20 transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg">
             <Code2 className="h-6 w-6 transition-transform duration-300 group-hover:rotate-12" strokeWidth={2.5} />
           </div>
           <span className="text-2xl font-black tracking-tighter text-foreground">
@@ -81,22 +81,17 @@ export function SiteHeader() {
           />
         </form>
 
-        <nav className="ml-auto flex items-center gap-1">
-          <Button asChild variant="ghost" className="text-base font-medium">
-            <Link to="/explorer">
-              <FolderTree className="mr-2 h-5 w-5" />
-              Explorer
-            </Link>
-          </Button>
+        <nav className="ml-auto flex flex-1 sm:flex-none justify-end items-center gap-0 sm:gap-2 overflow-x-auto no-scrollbar">
+
 
           <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" className="text-base font-medium text-muted-foreground hover:text-foreground">
-                <MessageSquare className="mr-2 h-5 w-5" />
-                Feedback
+              <Button variant="ghost" className="text-base font-medium text-muted-foreground hover:text-foreground px-2 sm:px-4">
+                <MessageSquare className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Feedback</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md w-[95vw] sm:w-full">
               <DialogHeader>
                 <DialogTitle>Send Feedback</DialogTitle>
               </DialogHeader>
@@ -132,17 +127,17 @@ export function SiteHeader() {
 
           {authed ? (
             <>
-              <Button asChild variant="ghost" className="text-base font-medium">
+              <Button asChild variant="ghost" className="text-base font-medium px-2 sm:px-4">
                 <Link to="/dashboard">
-                  <LayoutDashboard className="mr-2 h-5 w-5" />
-                  Dashboard
+                  <LayoutDashboard className="h-5 w-5 sm:mr-2" />
+                  <span className="hidden md:inline">Dashboard</span>
                 </Link>
               </Button>
 
-              <Button asChild variant="ghost" className="text-base font-medium text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100/50">
+              <Button asChild variant="ghost" className="text-base font-medium text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100/50 px-2 sm:px-4">
                 <Link to="/feedback">
-                  <Flag className="mr-2 h-5 w-5" />
-                  View Feedback
+                  <Flag className="h-5 w-5 sm:mr-2" />
+                  <span className="hidden md:inline">View Feedback</span>
                 </Link>
               </Button>
 
@@ -154,14 +149,14 @@ export function SiteHeader() {
 
               <Button
                 variant="ghost"
-                className="text-base font-medium"
+                className="text-base font-medium px-2 sm:px-4"
                 onClick={() => {
                   api.logout();
                   navigate({ to: "/" });
                 }}
               >
-                <LogOut className="mr-2 h-5 w-5" />
-                Sign out
+                <LogOut className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Sign out</span>
               </Button>
             </>
           ) : null}

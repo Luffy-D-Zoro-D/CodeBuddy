@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "sonner";
 import { IdentityWall } from "@/components/IdentityWall";
+import { MobileBlocker } from "@/components/MobileBlocker";
 
 function NotFoundComponent() {
   return (
@@ -135,10 +136,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <IdentityWall>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-      </IdentityWall>
+      <MobileBlocker>
+        <IdentityWall>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+        </IdentityWall>
+      </MobileBlocker>
       <Toaster position="bottom-center" richColors />
     </QueryClientProvider>
   );

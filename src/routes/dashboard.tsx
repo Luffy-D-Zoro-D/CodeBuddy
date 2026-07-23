@@ -215,9 +215,9 @@ function Dashboard() {
   if (isChecking) return null;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    <div className="flex min-h-screen lg:h-screen flex-col lg:overflow-hidden bg-background">
       <SiteHeader />
-      <main className="mx-auto grid w-full flex-1 max-w-[1600px] grid-cols-1 gap-6 overflow-hidden px-6 py-6 lg:grid-cols-[280px_1fr]">
+      <main className="mx-auto grid w-full flex-1 max-w-[1600px] grid-cols-1 gap-6 lg:overflow-hidden px-6 py-6 lg:grid-cols-[280px_1fr]">
         {/* Sidebar */}
         <aside className="flex flex-col gap-4 overflow-hidden pb-2 pr-2">
           {selectedCat && (
@@ -279,11 +279,10 @@ function Dashboard() {
                 <li key={t.id}>
                   <button
                     onClick={() => setSelectedTopicId(t.id)}
-                    className={`w-full truncate rounded-md px-2 py-1.5 text-left text-sm transition ${
-                      selectedTopicId === t.id
+                    className={`w-full truncate rounded-md px-2 py-1.5 text-left text-sm transition ${selectedTopicId === t.id
                         ? "bg-accent text-accent-foreground"
                         : "text-foreground hover:bg-secondary"
-                    }`}
+                      }`}
                   >
                     {t.title}
                   </button>
@@ -321,11 +320,10 @@ function Dashboard() {
                   <li key={d.id}>
                     <button
                       onClick={() => setSelectedDayId(d.id)}
-                      className={`flex w-full items-center gap-2 truncate rounded-md px-2 py-1.5 text-left text-sm transition ${
-                        selectedDayId === d.id
+                      className={`flex w-full items-center gap-2 truncate rounded-md px-2 py-1.5 text-left text-sm transition ${selectedDayId === d.id
                           ? "bg-accent text-accent-foreground"
                           : "text-foreground hover:bg-secondary"
-                      }`}
+                        }`}
                     >
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <span className="truncate">
@@ -465,79 +463,79 @@ function Dashboard() {
 
             {/* Right column: Editor */}
             {selectedDay && (
-              <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary/20 px-3 py-2">
-                  <div className="flex flex-wrap items-center gap-1">
-                    {isLoadingFiles ? (
-                      <div className="px-2 py-1">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : (
-                      files.map((f) => (
-                        <button
-                          key={f.id}
-                          onClick={() => setSelectedFileId(f.id)}
-                          className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-xs transition ${
-                            selectedFileId === f.id
-                              ? "bg-primary text-primary-foreground shadow-sm"
-                              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                          }`}
-                        >
-                          <FileCode2 className="h-3.5 w-3.5" />
-                          {f.displayName}
-                        </button>
-                      ))
-                    )}
-                    <NewFileDialog
-                      dayId={selectedDay.id}
-                      onCreated={(f) => {
-                        setSelectedFileId(f.id);
-                        refetchFiles();
-                      }}
-                    />
-                  </div>
-                  {currentFile && (
-                    <div className="flex items-center gap-1.5">
-                      {isLuffy && (
-                        <Button variant="outline" size="sm" onClick={formatAI} className="h-8">
-                          <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Format with AI
-                        </Button>
-                      )}
-                      <Button size="sm" onClick={saveFile} className="h-8">
-                        <Save className="mr-1.5 h-3.5 w-3.5" /> Save
-                      </Button>
-                      <DeleteFile
-                        file={currentFile}
-                        onDeleted={() => {
-                          setSelectedFileId(null);
-                          refetchFiles();
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="relative flex-1 overflow-hidden p-0">
-                  {currentFile ? (
-                    <CodeViewer
-                      value={draft}
-                      language={currentFile.language}
-                      readOnly={false}
-                      onChange={setDraft}
-                      height="100%"
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center text-sm text-muted-foreground">
-                      <FileCode2 className="mb-2 h-8 w-8 opacity-20" />
-                      No files yet. Add one to start.
-                    </div>
-                  )}
-                </div>
-              </div>
+              <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card min-h-[500px] lg:min-h-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary/20 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-1">
+          {isLoadingFiles ? (
+            <div className="px-2 py-1">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            files.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setSelectedFileId(f.id)}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-xs transition ${selectedFileId === f.id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+              >
+                <FileCode2 className="h-3.5 w-3.5" />
+                {f.displayName}
+              </button>
+            ))
+          )}
+          <NewFileDialog
+            dayId={selectedDay.id}
+            onCreated={(f) => {
+              setSelectedFileId(f.id);
+              refetchFiles();
+            }}
+          />
+        </div>
+        {currentFile && (
+          <div className="flex items-center gap-1.5">
+            {isLuffy && (
+              <Button variant="outline" size="sm" onClick={formatAI} className="h-8">
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Format with AI
+              </Button>
             )}
+            <Button size="sm" onClick={saveFile} className="h-8">
+              <Save className="mr-1.5 h-3.5 w-3.5" /> Save
+            </Button>
+            <DeleteFile
+              file={currentFile}
+              onDeleted={() => {
+                setSelectedFileId(null);
+                refetchFiles();
+              }}
+            />
           </div>
         )}
-      </main>
+      </div>
+      <div className="relative flex-1 overflow-hidden p-0">
+        {currentFile ? (
+          <CodeViewer
+            value={draft}
+            language={currentFile.language}
+            readOnly={false}
+            onChange={setDraft}
+            height="100%"
+          />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center text-sm text-muted-foreground">
+            <FileCode2 className="mb-2 h-8 w-8 opacity-20" />
+            No files yet. Add one to start.
+          </div>
+        )}
+      </div>
     </div>
+  )
+}
+          </div >
+        )}
+      </main >
+    </div >
   );
 }
 
@@ -941,14 +939,14 @@ function NewFileDialog({ dayId, onCreated }: { dayId: string; onCreated: (f: Cod
             <TabsTrigger value="upload">Upload Files</TabsTrigger>
             <TabsTrigger value="manual">Create Manually</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="upload" className="space-y-4">
             <div className="space-y-2">
               <Label>Select HTML/CSS/JS files</Label>
-              <Input 
-                type="file" 
-                multiple 
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []))} 
+              <Input
+                type="file"
+                multiple
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               />
               <p className="text-xs text-muted-foreground">
                 Files will be read as text and added to the editor.
@@ -1102,10 +1100,10 @@ function UploadAssetDialog({ dayId, onCreated }: { dayId: string; onCreated: () 
           <DialogTitle>Upload Asset(s)</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <Input 
-            type="file" 
-            multiple 
-            onChange={(e) => setFiles(Array.from(e.target.files ?? []))} 
+          <Input
+            type="file"
+            multiple
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
           />
           <p className="text-xs text-muted-foreground">Max size: ~15MB (MongoDB limit)</p>
         </div>
@@ -1186,7 +1184,7 @@ function QuickUploadDialog({
     setUploading(true);
     try {
       let topicId = selectedTopicId;
-      
+
       if (isNewTopic) {
         const t = await api.createTopic({
           categoryId,
@@ -1217,7 +1215,7 @@ function QuickUploadDialog({
                   if (file.name.endsWith(".html")) language = "html";
                   else if (file.name.endsWith(".css")) language = "css";
                   else if (file.name.endsWith(".js") || file.name.endsWith(".ts")) language = "javascript";
-                  
+
                   await api.createFile({
                     dayId: d.id,
                     filename: file.name,
@@ -1251,22 +1249,22 @@ function QuickUploadDialog({
               reader.onerror = reject;
               reader.readAsDataURL(file);
             } else {
-               // Ignore unsupported files
-               resolve();
+              // Ignore unsupported files
+              resolve();
             }
           });
         })
       );
-      
+
       onSuccess(topicId, d.id);
       setOpen(false);
-      
+
       // reset
       setNewTopicName("");
       setDayTitle("");
       setFiles([]);
       setIsNewTopic(false);
-      
+
       toast.success("Lecture uploaded successfully!");
     } catch (err) {
       toast.error("Failed to upload lecture");
@@ -1280,12 +1278,12 @@ function QuickUploadDialog({
     setFiles(newFiles);
     setHasAnalyzed(false);
     setAnalyzing(true);
-    
+
     try {
       // Find the first text file to use as a snippet for the AI
       const textFile = newFiles.find(f => f.type.startsWith("text/") || f.name.endsWith(".js") || f.name.endsWith(".html") || f.name.endsWith(".css"));
       let snippet = "(No text file found, use filename context: " + newFiles.map(f => f.name).join(", ") + ")";
-      
+
       if (textFile) {
         snippet = await new Promise<string>((resolve) => {
           const reader = new FileReader();
@@ -1297,7 +1295,7 @@ function QuickUploadDialog({
 
       const existingTopics = topics.map(t => ({ id: t.id, title: t.title }));
       const aiResult = await api.inferTopic(categoryName, existingTopics, snippet, currentTopicId);
-      
+
       if (aiResult.action === "use_existing" && aiResult.topicId) {
         setIsNewTopic(false);
         setSelectedTopicId(aiResult.topicId);
@@ -1308,7 +1306,7 @@ function QuickUploadDialog({
       if (aiResult.dayTitle) {
         setDayTitle(aiResult.dayTitle);
       }
-      
+
       setHasAnalyzed(true);
       toast.success("AI Analysis Complete. Please review and upload.");
     } catch (err) {
@@ -1352,10 +1350,10 @@ function QuickUploadDialog({
                   </div>
                 ) : (
                   <>
-                    <Input 
-                      type="file" 
-                      multiple 
-                      onChange={(e) => handleFilesSelected(Array.from(e.target.files ?? []))} 
+                    <Input
+                      type="file"
+                      multiple
+                      onChange={(e) => handleFilesSelected(Array.from(e.target.files ?? []))}
                       accept=".html,.css,.js,.ts,.json,image/*,.zip"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
@@ -1416,7 +1414,7 @@ function QuickUploadDialog({
               <div className="space-y-2 pt-2">
                 <Label>Lecture Files</Label>
                 <div className="flex items-center gap-2 text-sm p-3 bg-secondary rounded-md border border-border">
-                   <FileCode2 className="h-4 w-4" /> <strong>{files.length}</strong> file(s) ready to upload.
+                  <FileCode2 className="h-4 w-4" /> <strong>{files.length}</strong> file(s) ready to upload.
                 </div>
               </div>
             </>

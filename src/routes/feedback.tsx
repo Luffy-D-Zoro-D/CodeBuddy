@@ -183,26 +183,26 @@ function FeedbackPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <SiteHeader />
       <main className="mx-auto w-full max-w-5xl px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Student Feedback</h1>
             <p className="text-muted-foreground mt-1">Review and manage bugs and suggestions submitted by students.</p>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center space-x-6 bg-secondary/30 p-3 px-5 rounded-xl border border-border/50 shadow-sm">
-              <div className="flex items-center space-x-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 bg-secondary/30 p-3 sm:px-5 rounded-xl border border-border/50 shadow-sm w-full sm:w-auto">
+              <div className="flex items-center space-x-2 w-full sm:w-auto">
                 <Switch id="name-mode" checked={requireNames} onCheckedChange={toggleRequireNames} />
-                <Label htmlFor="name-mode" className="font-semibold cursor-pointer">Require Names</Label>
+                <Label htmlFor="name-mode" className="font-semibold cursor-pointer whitespace-nowrap">Require Names</Label>
               </div>
-              <div className="w-px h-6 bg-border"></div>
-              <div className="flex items-center space-x-2">
+              <div className="hidden sm:block w-px h-6 bg-border"></div>
+              <div className="flex items-center space-x-2 w-full sm:w-auto">
                 <Switch id="lockdown-mode" checked={lockdownMode} onCheckedChange={toggleLockdownMode} className="data-[state=checked]:bg-red-600" />
-                <Label htmlFor="lockdown-mode" className="font-semibold cursor-pointer text-red-600 flex items-center gap-1">
+                <Label htmlFor="lockdown-mode" className="font-semibold cursor-pointer text-red-600 flex items-center gap-1 whitespace-nowrap">
                   <ShieldAlert className="h-4 w-4" /> Lockdown Mode
                 </Label>
               </div>
             </div>
-            <Button variant="outline" onClick={fetchData} disabled={loading}>
+            <Button variant="outline" onClick={fetchData} disabled={loading} className="w-full sm:w-auto">
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
